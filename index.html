@@ -70,7 +70,6 @@
         }
         .scan-btn svg { width: 22px; height: 22px; fill: white; }
         
-        /* 手机端显示按钮 */
         @media (pointer: coarse) {
             .scan-btn { display: flex; }
         }
@@ -84,9 +83,7 @@
             color: #666; 
             line-height: 1.6;
         }
-        .tips strong { color: #333; }
 
-        /* 扫码弹窗 */
         .modal { 
             display: none; 
             position: fixed; 
@@ -118,11 +115,16 @@
             flex: 1; 
             position: relative; 
             overflow: hidden;
+            background: #000;
         }
+        /* 优化视频清晰度 */
         #reader video { 
             width: 100% !important; 
             height: 100% !important; 
             object-fit: cover;
+            /* 提高清晰度 */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         .scan-frame { 
             position: absolute; 
@@ -132,11 +134,12 @@
             border: 2px solid rgba(255,255,255,0.3); 
             border-radius: 20px; 
             pointer-events: none;
+            z-index: 10;
         }
         .corner { 
             position: absolute; 
             width: 25px; height: 25px; 
-            border-color: #667eea; 
+            border-color: #00ff00; 
             border-style: solid; 
             border-width: 0;
         }
@@ -147,8 +150,8 @@
         .scan-line { 
             position: absolute; 
             width: 100%; height: 3px; 
-            background: linear-gradient(to right, transparent, #667eea, transparent); 
-            box-shadow: 0 0 10px #667eea; 
+            background: linear-gradient(to right, transparent, #00ff00, transparent); 
+            box-shadow: 0 0 10px #00ff00; 
             animation: scan 2.5s linear infinite;
         }
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
@@ -159,6 +162,7 @@
             text-align: center; 
             color: rgba(255,255,255,0.9); 
             font-size: 14px;
+            z-index: 10;
         }
         .loading { 
             position: absolute; 
@@ -166,6 +170,7 @@
             transform: translate(-50%, -50%); 
             color: white; 
             text-align: center;
+            z-index: 5;
         }
         .spinner { 
             width: 50px; height: 50px; 
@@ -177,23 +182,32 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        .toast { 
-            position: fixed; 
-            top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); 
-            background: rgba(0,0,0,0.85); 
-            color: white; 
-            padding: 16px 28px; 
-            border-radius: 12px; 
-            display: none; 
-            z-index: 10000; 
-            font-size: 15px;
+        /* 调试信息面板 */
+        .debug-info {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            padding: 10px;
+            font-size: 12px;
+            font-family: monospace;
+            border-radius: 8px;
+            z-index: 20;
+            max-height: 100px;
+            overflow-y: auto;
+            display: none;
         }
-        .toast.show { display: block; }
+        .debug-info.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+<h1>刘旭瞎搞着玩的</h1>
+
         <h2>🔍 二维码扫描</h2>
         
         <div class="input-group">
@@ -210,16 +224,16 @@
 
         <div class="tips">
             <strong>💡 使用提示：</strong><br>
-            • 手机端访问时会显示相机图标<br>
-            • 点击图标调起摄像头扫码<br>
-            • 识别结果自动填入上方输入框<br>
-            • 请允许浏览器摄像头权限
+            • 点击相机图标调起摄像头<br>
+            • 将二维码对准绿色框内<br>
+            • 识别成功会弹出内容提示<br>
+            • 如相机模糊，请擦拭镜头或调整光线
         </div>
     </div>
 
     <div class="modal" id="scanModal">
         <div class="modal-header">
-            <span class="modal-title">将二维码放入框内</span>
+            <span class="modal-title">将二维码放入绿色框内</span>
             <button class="close-btn" id="closeBtn">×</button>
         </div>
         <div id="reader">
@@ -228,6 +242,7 @@
                 <div>正在启动摄像头...</div>
             </div>
         </div>
+        <div class="debug-info" id="debugInfo"></div>
         <div class="scan-frame">
             <div class="corner corner-tl"></div>
             <div class="corner corner-tr"></div>
@@ -235,115 +250,176 @@
             <div class="corner corner-br"></div>
             <div class="scan-line"></div>
         </div>
-        <div class="scan-tip">自动识别二维码 / 条形码</div>
+        <div class="scan-tip">自动识别中...请保持稳定</div>
     </div>
-
-    <div class="toast" id="toast"></div>
 
     <script>
         const scanBtn = document.getElementById('scanBtn');
         const scanModal = document.getElementById('scanModal');
         const closeBtn = document.getElementById('closeBtn');
         const resultInput = document.getElementById('resultInput');
-        const toast = document.getElementById('toast');
         const loading = document.getElementById('loading');
+        const debugInfo = document.getElementById('debugInfo');
 
         let html5QrCode = null;
         let isScanning = false;
+        let scanCount = 0;
 
-        function showToast(msg) {
-            toast.textContent = msg;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2500);
+        // 调试日志
+        function log(msg) {
+            console.log(msg);
+            debugInfo.innerHTML += '<div>' + new Date().toLocaleTimeString() + ' - ' + msg + '</div>';
+            debugInfo.scrollTop = debugInfo.scrollHeight;
         }
 
         async function startScan() {
             scanModal.classList.add('active');
+            // 双击标题栏显示调试信息
+            document.querySelector('.modal-title').addEventListener('dblclick', () => {
+                debugInfo.classList.toggle('active');
+            });
+            
             loading.style.display = 'block';
 
             try {
-                // 先获取可用摄像头列表
                 const cameras = await Html5Qrcode.getCameras();
-                console.log('检测到摄像头:', cameras);
+                log('找到 ' + cameras.length + ' 个摄像头');
 
                 if (cameras.length === 0) {
                     throw new Error('未找到摄像头');
                 }
 
                 // 优先选择后置摄像头
-                const backCamera = cameras.find(c => 
+                let selectedCamera = cameras.find(c => 
                     c.label.toLowerCase().includes('back') || 
                     c.label.toLowerCase().includes('后置') ||
                     c.label.toLowerCase().includes('environment') ||
                     c.label.toLowerCase().includes('rear')
-                ) || cameras[cameras.length - 1]; // 默认最后一个通常是后置
+                ) || cameras[cameras.length - 1];
+
+                log('使用摄像头: ' + selectedCamera.label);
 
                 html5QrCode = new Html5Qrcode("reader");
 
+                // 优化配置：提高清晰度配置
+                const config = {
+                    fps: 15, // 提高帧率
+                    qrbox: { width: 260, height: 260 },
+                    aspectRatio: 1.0,
+                    // 支持多种条码格式
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.QR_CODE,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        Html5QrcodeSupportedFormats.EAN_8,
+                        Html5QrcodeSupportedFormats.UPC_A,
+                        Html5QrcodeSupportedFormats.UPC_E
+                    ],
+                    // 视频配置：提高分辨率
+                    videoConstraints: {
+                        width: { min: 640, ideal: 1280, max: 1920 },
+                        height: { min: 480, ideal: 720, max: 1080 },
+                        facingMode: "environment"
+                    }
+                };
+
                 await html5QrCode.start(
-                    backCamera.id,
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 },
-                        aspectRatio: 1.0
-                    },
+                    selectedCamera.id,
+                    config,
                     onSuccess,
                     onError
                 );
 
                 isScanning = true;
                 loading.style.display = 'none';
+                log('摄像头启动成功');
 
             } catch (err) {
-                console.error('启动失败:', err);
+                log('启动失败: ' + err.message);
+                loading.style.display = 'none';
                 
-                // 备用方案：使用 facingMode
+                // 备用方案
                 try {
+                    log('尝试备用方案...');
                     html5QrCode = new Html5Qrcode("reader");
                     await html5QrCode.start(
                         { facingMode: "environment" },
-                        { fps: 10, qrbox: 250 },
+                        { 
+                            fps: 15, 
+                            qrbox: 260,
+                            videoConstraints: {
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 }
+                            }
+                        },
                         onSuccess,
                         onError
                     );
                     isScanning = true;
                     loading.style.display = 'none';
+                    log('备用方案启动成功');
                 } catch (err2) {
-                    loading.style.display = 'none';
-                    showToast('摄像头启动失败，请检查权限');
-                    setTimeout(closeScan, 2000);
+                    alert('摄像头启动失败: ' + (err2.message || '请检查权限'));
+                    closeScan();
                 }
             }
         }
 
-        function onSuccess(decodedText) {
+        function onSuccess(decodedText, decodedResult) {
+            scanCount++;
+            log('第 ' + scanCount + ' 次识别: ' + decodedText.substring(0, 50));
+            
+            // 填充输入框
             resultInput.value = decodedText;
-            if (navigator.vibrate) navigator.vibrate(150);
-            showToast('✓ 识别成功');
-            setTimeout(closeScan, 600);
+            
+            // 强制 alert 显示结果
+            alert('识别成功！内容：\n\n' + decodedText + '\n\n长度：' + decodedText.length + ' 字符');
+            
+            // 震动反馈
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            
+            // 停止扫描
+            setTimeout(() => {
+                closeScan();
+            }, 500);
         }
 
-        function onError(error) {
-            // 持续扫描中，忽略错误
+        function onError(errorMessage) {
+            // 静默处理，但每10次记录一次避免刷屏
+            if (scanCount % 10 === 0) {
+                log('扫描中...（未识别）');
+            }
         }
 
         async function closeScan() {
             scanModal.classList.remove('active');
+            debugInfo.classList.remove('active');
+            debugInfo.innerHTML = '';
+            
             if (html5QrCode && isScanning) {
                 try {
                     await html5QrCode.stop();
                     html5QrCode.clear();
+                    log('摄像头已停止');
                 } catch (e) {}
                 isScanning = false;
             }
+            scanCount = 0;
         }
 
         scanBtn.addEventListener('click', startScan);
         closeBtn.addEventListener('click', closeScan);
         
-        // 点击背景关闭
         scanModal.addEventListener('click', (e) => {
             if (e.target === scanModal) closeScan();
+        });
+
+        // 防止页面隐藏时继续扫描
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isScanning) {
+                closeScan();
+            }
         });
     </script>
 </body>
