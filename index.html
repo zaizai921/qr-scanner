@@ -53,6 +53,19 @@
         .scan-btn svg { width: 22px; height: 22px; fill: white; }
         @media (pointer: coarse) { .scan-btn { display: flex; } }
         
+        /* 浏览器提示 */
+        .browser-tip {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+        }
+        .browser-tip.show { display: block; }
+        
         .modal { 
             display: none; 
             position: fixed; 
@@ -95,7 +108,6 @@
             object-fit: cover;
         }
         
-        /* 隐藏库自带元素 */
         #reader__scan_region,
         #reader__dashboard,
         #reader__status_span,
@@ -154,7 +166,6 @@
             z-index: 200;
             max-height: 120px;
             overflow-y: auto;
-            border: 1px solid #333;
         }
         
         .result-panel {
@@ -203,17 +214,16 @@
             margin: 0 auto 10px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .error-msg {
-            color: #ff6666;
-            font-size: 12px;
-            margin-top: 5px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>🔍 二维码扫描</h2>
+        
+        <div class="browser-tip" id="browserTip">
+            检测到您在使用 <span id="browserName"></span>，如遇问题请尝试在微信中打开
+        </div>
+        
         <div class="input-group">
             <label>扫描结果</label>
             <div class="input-wrapper">
@@ -224,7 +234,6 @@
                     </svg>
                 </button>
             </div>
-            <div class="error-msg" id="errorMsg"></div>
         </div>
     </div>
 
@@ -259,6 +268,27 @@
     </div>
 
     <script>
+        // 检测浏览器类型
+        function detectBrowser() {
+            const ua = navigator.userAgent.toLowerCase();
+            if (/micromessenger/i.test(ua)) return '微信';
+            if (/quark/i.test(ua)) return '夸克';
+            if (/ucbrowser/i.test(ua)) return 'UC';
+            if (/safari/i.test(ua) && /iphone|ipad|ipod/i.test(ua)) return 'Safari';
+            if (/chrome/i.test(ua) && /android/i.test(ua)) return 'Chrome';
+            if (/firefox/i.test(ua)) return 'Firefox';
+            return '当前浏览器';
+        }
+
+        const browserName = detectBrowser();
+        const browserTip = document.getElementById('browserTip');
+        const browserNameSpan = document.getElementById('browserName');
+        
+        if (browserName !== '微信') {
+            browserNameSpan.textContent = browserName;
+            browserTip.classList.add('show');
+        }
+
         const scanBtn = document.getElementById('scanBtn');
         const scanModal = document.getElementById('scanModal');
         const closeBtn = document.getElementById('closeBtn');
@@ -267,7 +297,6 @@
         const debugPanel = document.getElementById('debugPanel');
         const resultPanel = document.getElementById('resultPanel');
         const resultContent = document.getElementById('resultContent');
-        const errorMsg = document.getElementById('errorMsg');
 
         let html5QrCode = null;
         let isScanning = false;
@@ -284,36 +313,57 @@
         }
 
         scanBtn.addEventListener('click', async function() {
-            errorMsg.textContent = '';
             scanModal.classList.add('active');
             loading.style.display = 'block';
-            debugPanel.innerHTML = '开始初始化...';
+            debugPanel.innerHTML = '开始...';
             resultPanel.classList.remove('show');
 
             try {
-                log('检查浏览器支持...');
-                
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error('浏览器不支持摄像头');
+                log('浏览器: ' + browserName);
+                log('检查支持...');
+
+                // 检查 mediaDevices API
+                if (!navigator.mediaDevices) {
+                    throw new Error('浏览器不支持mediaDevices，请使用微信或Chrome');
                 }
 
-                log('获取摄像头列表...');
-                const cameras = await Html5Qrcode.getCameras();
+                if (!navigator.mediaDevices.getUserMedia) {
+                    throw new Error('浏览器不支持getUserMedia');
+                }
+
+                log('获取摄像头...');
+                let cameras = [];
+                
+                try {
+                    cameras = await Html5Qrcode.getCameras();
+                } catch (e) {
+                    // 某些浏览器需要先请求权限才能枚举摄像头
+                    log('尝试直接请求权限...');
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: 'environment' } 
+                    });
+                    // 获取到权限后重新枚举
+                    cameras = await Html5Qrcode.getCameras();
+                    // 停止临时流
+                    stream.getTracks().forEach(track => track.stop());
+                }
+
                 log(`找到 ${cameras.length} 个摄像头`);
 
                 if (cameras.length === 0) {
-                    throw new Error('没有可用摄像头');
+                    throw new Error('没有可用摄像头，请检查权限');
                 }
 
                 // 选择后置摄像头
                 const selectedCamera = cameras.find(c => 
                     c.label.toLowerCase().includes('back') || 
-                    c.label.toLowerCase().includes('后置')
+                    c.label.toLowerCase().includes('后置') ||
+                    c.label.toLowerCase().includes('environment')
                 ) || cameras[cameras.length - 1];
 
-                log(`使用摄像头: ${selectedCamera.label || selectedCamera.id}`);
+                log(`使用: ${selectedCamera.label || '摄像头'}`);
 
-                // 清理旧的实例
+                // 清理旧实例
                 if (html5QrCode) {
                     try {
                         await html5QrCode.stop();
@@ -328,8 +378,8 @@
                     aspectRatio: 1.0
                 };
 
-                log('启动扫描...');
-                
+                log('启动扫描引擎...');
+
                 await html5QrCode.start(
                     selectedCamera.id,
                     config,
@@ -346,19 +396,18 @@
                         }, 2000);
                     },
                     function(errorMessage) {
-                        // 静默处理，持续扫描
+                        // 静默处理
                     }
                 );
 
                 isScanning = true;
                 loading.style.display = 'none';
-                log('✓ 扫描已启动');
+                log('✓ 扫描已启动，请对准二维码');
 
             } catch (err) {
                 log('✗ 错误: ' + err.message);
                 loading.style.display = 'none';
-                errorMsg.textContent = '错误: ' + err.message;
-                alert('启动失败: ' + err.message);
+                alert('启动失败: ' + err.message + '\n\n建议：\n1. 检查摄像头权限\n2. 尝试在微信中打开\n3. 使用Chrome浏览器');
             }
         });
 
@@ -370,7 +419,7 @@
                 try {
                     await html5QrCode.stop();
                     await html5QrCode.clear();
-                    log('扫描已停止');
+                    log('已停止');
                 } catch (e) {}
                 isScanning = false;
             }
