@@ -2,436 +2,184 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>二维码扫描</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字飘落效果</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            min-height: 100vh; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px; 
-        }
-        .container { 
-            background: white; 
-            padding: 40px 30px; 
-            border-radius: 20px; 
-            width: 100%; 
-            max-width: 400px; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
-        }
-        h2 { text-align: center; margin-bottom: 30px; color: #333; font-size: 22px; }
-        .input-group { margin-bottom: 25px; }
-        label { display: block; margin-bottom: 8px; color: #666; font-size: 14px; font-weight: 500; }
-        .input-wrapper { position: relative; }
-        input { 
-            width: 100%; 
-            padding: 14px 50px 14px 15px; 
-            border: 2px solid #e0e0e0; 
-            border-radius: 12px; 
-            font-size: 16px; 
-        }
-        .scan-btn { 
-            position: absolute; 
-            right: 8px; 
-            top: 50%; 
-            transform: translateY(-50%); 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            border: none; 
-            width: 38px; 
-            height: 38px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            display: none; 
-            align-items: center; 
-            justify-content: center;
-        }
-        .scan-btn svg { width: 22px; height: 22px; fill: white; }
-        @media (pointer: coarse) { .scan-btn { display: flex; } }
-        
-        /* 浏览器提示 */
-        .browser-tip {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            display: none;
-        }
-        .browser-tip.show { display: block; }
-        
-        .modal { 
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: #000; 
-            z-index: 9999; 
-            flex-direction: column;
-        }
-        .modal.active { display: flex; }
-        .modal-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 12px 15px; 
-            background: rgba(0,0,0,0.9);
-            z-index: 100;
-        }
-        .modal-title { color: white; font-size: 15px; }
-        .close-btn { 
-            background: rgba(255,255,255,0.2); 
-            border: none; 
-            color: white; 
-            width: 32px; height: 32px; 
-            border-radius: 50%; 
-            font-size: 20px; 
-            cursor: pointer;
-        }
-        
-        #reader { 
-            flex: 1; 
-            position: relative; 
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=ZCOOL+KuaiLe&display=swap');
+
+        body {
+            margin: 0;
             overflow: hidden;
-            background: #000;
+            background-color: #0f172a;
+            font-family: 'ZCOOL KuaiLe', cursive;
         }
-        
-        #reader video { 
-            width: 100% !important; 
-            height: 100% !important; 
-            object-fit: cover;
-        }
-        
-        #reader__scan_region,
-        #reader__dashboard,
-        #reader__status_span,
-        #reader__camera_permission_button {
-            display: none !important;
-        }
-        
-        .scan-frame { 
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            width: 260px; 
-            height: 260px; 
-            border: 3px solid #00ff00; 
-            border-radius: 15px; 
-            pointer-events: none;
-            z-index: 50;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-        }
-        
-        .corner { 
-            position: absolute; 
-            width: 25px; 
-            height: 25px; 
-            border-color: #00ff00; 
-            border-style: solid; 
-            border-width: 0;
-        }
-        .corner-tl { top: -3px; left: -3px; border-top-width: 4px; border-left-width: 4px; border-radius: 12px 0 0 0; }
-        .corner-tr { top: -3px; right: -3px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 12px 0 0; }
-        .corner-bl { bottom: -3px; left: -3px; border-bottom-width: 4px; border-left-width: 4px; border-radius: 0 0 0 12px; }
-        .corner-br { bottom: -3px; right: -3px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 12px 0; }
-        
-        .scan-line { 
-            position: absolute; 
-            width: 100%; 
-            height: 2px; 
-            background: #00ff00; 
-            box-shadow: 0 0 10px #00ff00; 
-            animation: scan 2s linear infinite;
-        }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-        
-        .debug-panel {
+
+        /* 背景动画 - 深邃星空感 */
+        .bg-animated {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
             position: absolute;
-            top: 60px;
-            left: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.9);
-            color: #0f0;
-            padding: 10px;
-            font-size: 12px;
-            font-family: monospace;
-            border-radius: 8px;
-            z-index: 200;
-            max-height: 120px;
-            overflow-y: auto;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
         }
-        
-        .result-panel {
+
+        /* 飘落文字的基础样式 */
+        .falling-text {
             position: absolute;
-            bottom: 80px;
-            left: 10px;
-            right: 10px;
-            background: rgba(0,255,0,0.95);
-            color: black;
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 200;
-            display: none;
-            word-break: break-all;
-            font-size: 14px;
-            font-weight: bold;
+            top: -50px; /* 从屏幕上方外开始 */
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none; /* 不阻挡鼠标事件 */
+            user-select: none;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+            will-change: transform, opacity;
         }
-        .result-panel.show { display: block; }
-        
-        .scan-tip { 
-            position: absolute; 
-            bottom: 20px; 
-            left: 0; 
-            right: 0; 
-            text-align: center; 
-            color: rgba(255,255,255,0.8); 
-            font-size: 14px;
-            z-index: 50;
+
+        /* 关键帧动画：下落 + 摇摆 */
+        @keyframes fall {
+            0% {
+                transform: translateY(0) rotate(0deg) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(110vh) rotate(var(--rotation-end)) translateX(var(--sway-end));
+                opacity: 0;
+            }
         }
-        
-        .loading { 
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            color: white; 
-            text-align: center;
-            z-index: 60;
+
+        /* 摇摆动画辅助 */
+        @keyframes sway {
+            0% { margin-left: 0; }
+            50% { margin-left: 50px; }
+            100% { margin-left: 0; }
         }
-        .spinner { 
-            width: 40px; height: 40px; 
-            border: 3px solid rgba(255,255,255,0.3); 
-            border-top-color: #00ff00; 
-            border-radius: 50%; 
-            animation: spin 1s linear infinite; 
-            margin: 0 auto 10px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h2>🔍 二维码扫描</h2>
-        
-        <div class="browser-tip" id="browserTip">
-            检测到您在使用 <span id="browserName"></span>，如遇问题请尝试在微信中打开
-        </div>
-        
-        <div class="input-group">
-            <label>扫描结果</label>
-            <div class="input-wrapper">
-                <input type="text" id="resultInput" placeholder="点击相机图标开始扫码" readonly>
-                <button class="scan-btn" id="scanBtn">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M9.5 6.5v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zm0 13v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zm10-13v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zm0 13v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zM3 7h3V5H3a2 2 0 0 0-2 2v3h2V7zm0 10v-3H1v3a2 2 0 0 0 2 2h3v-2H3zm17-10V5h-3v2h3v3h2V7a2 2 0 0 0-2-2zm0 10h-3v2h3a2 2 0 0 0 2-2v-3h-2v3z"/>
-                    </svg>
-                </button>
-            </div>
+<body class="h-screen w-screen overflow-hidden">
+
+    <!-- 背景层 -->
+    <div class="bg-animated"></div>
+
+    <!-- 控制面板 (可选，增加互动性) -->
+    <div class="absolute top-4 left-4 z-50 bg-slate-800/80 backdrop-blur-sm p-4 rounded-lg border border-slate-600 shadow-xl text-white">
+        <h1 class="text-lg font-bold mb-2 text-pink-400">✨ 文字飘落特效</h1>
+        <div class="flex flex-col gap-2 text-sm text-slate-300">
+            <p>密度: <span id="density-display">中</span></p>
+            <input type="range" min="50" max="500" value="200" class="w-32 accent-pink-500" id="speed-control">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="chaos-mode" class="accent-pink-500">
+                <span>混沌模式 (疯狂旋转)</span>
+            </label>
         </div>
     </div>
 
-    <div class="modal" id="scanModal">
-        <div class="modal-header">
-            <span class="modal-title">二维码扫描</span>
-            <button class="close-btn" id="closeBtn">×</button>
-        </div>
-        
-        <div id="reader">
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <div>启动中...</div>
-            </div>
-        </div>
-        
-        <div class="debug-panel" id="debugPanel">等待启动...</div>
-        
-        <div class="result-panel" id="resultPanel">
-            <div id="resultContent"></div>
-        </div>
-        
-        <div class="scan-frame">
-            <div class="corner corner-tl"></div>
-            <div class="corner corner-tr"></div>
-            <div class="corner corner-bl"></div>
-            <div class="corner corner-br"></div>
-            <div class="scan-line"></div>
-        </div>
-        
-        <div class="scan-tip">将二维码放入绿色框内</div>
-    </div>
+    <!-- 容器 -->
+    <div id="scene" class="relative w-full h-full"></div>
 
     <script>
-        // 检测浏览器类型
-        function detectBrowser() {
-            const ua = navigator.userAgent.toLowerCase();
-            if (/micromessenger/i.test(ua)) return '微信';
-            if (/quark/i.test(ua)) return '夸克';
-            if (/ucbrowser/i.test(ua)) return 'UC';
-            if (/safari/i.test(ua) && /iphone|ipad|ipod/i.test(ua)) return 'Safari';
-            if (/chrome/i.test(ua) && /android/i.test(ua)) return 'Chrome';
-            if (/firefox/i.test(ua)) return 'Firefox';
-            return '当前浏览器';
-        }
-
-        const browserName = detectBrowser();
-        const browserTip = document.getElementById('browserTip');
-        const browserNameSpan = document.getElementById('browserName');
+        const scene = document.getElementById('scene');
+        const speedControl = document.getElementById('speed-control');
+        const chaosMode = document.getElementById('chaos-mode');
         
-        if (browserName !== '微信') {
-            browserNameSpan.textContent = browserName;
-            browserTip.classList.add('show');
-        }
+        // 配置参数
+        const TEXT_CONTENT = "付梓沫吃屎";
+        const COLORS = [
+            '#ffffff', // 白
+            '#fca5a5', // 浅红
+            '#fdba74', // 橙
+            '#86efac', // 绿
+            '#93c5fd', // 蓝
+            '#c4b5fd', // 紫
+            '#f0abfc'  // 粉
+        ];
+        
+        let spawnRate = 200; // 生成间隔 ms
+        let isChaos = false;
 
-        const scanBtn = document.getElementById('scanBtn');
-        const scanModal = document.getElementById('scanModal');
-        const closeBtn = document.getElementById('closeBtn');
-        const resultInput = document.getElementById('resultInput');
-        const loading = document.getElementById('loading');
-        const debugPanel = document.getElementById('debugPanel');
-        const resultPanel = document.getElementById('resultPanel');
-        const resultContent = document.getElementById('resultContent');
-
-        let html5QrCode = null;
-        let isScanning = false;
-
-        function log(msg) {
-            const time = new Date().toLocaleTimeString();
-            const line = `[${time}] ${msg}`;
-            console.log(line);
-            debugPanel.innerHTML = line + '<br>' + debugPanel.innerHTML;
-            const lines = debugPanel.innerHTML.split('<br>');
-            if (lines.length > 6) {
-                debugPanel.innerHTML = lines.slice(0, 6).join('<br>');
-            }
-        }
-
-        scanBtn.addEventListener('click', async function() {
-            scanModal.classList.add('active');
-            loading.style.display = 'block';
-            debugPanel.innerHTML = '开始...';
-            resultPanel.classList.remove('show');
-
-            try {
-                log('浏览器: ' + browserName);
-                log('检查支持...');
-
-                // 检查 mediaDevices API
-                if (!navigator.mediaDevices) {
-                    throw new Error('浏览器不支持mediaDevices，请使用微信或Chrome');
-                }
-
-                if (!navigator.mediaDevices.getUserMedia) {
-                    throw new Error('浏览器不支持getUserMedia');
-                }
-
-                log('获取摄像头...');
-                let cameras = [];
-                
-                try {
-                    cameras = await Html5Qrcode.getCameras();
-                } catch (e) {
-                    // 某些浏览器需要先请求权限才能枚举摄像头
-                    log('尝试直接请求权限...');
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: 'environment' } 
-                    });
-                    // 获取到权限后重新枚举
-                    cameras = await Html5Qrcode.getCameras();
-                    // 停止临时流
-                    stream.getTracks().forEach(track => track.stop());
-                }
-
-                log(`找到 ${cameras.length} 个摄像头`);
-
-                if (cameras.length === 0) {
-                    throw new Error('没有可用摄像头，请检查权限');
-                }
-
-                // 选择后置摄像头
-                const selectedCamera = cameras.find(c => 
-                    c.label.toLowerCase().includes('back') || 
-                    c.label.toLowerCase().includes('后置') ||
-                    c.label.toLowerCase().includes('environment')
-                ) || cameras[cameras.length - 1];
-
-                log(`使用: ${selectedCamera.label || '摄像头'}`);
-
-                // 清理旧实例
-                if (html5QrCode) {
-                    try {
-                        await html5QrCode.stop();
-                    } catch(e) {}
-                }
-
-                html5QrCode = new Html5Qrcode("reader");
-
-                const config = {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0
-                };
-
-                log('启动扫描引擎...');
-
-                await html5QrCode.start(
-                    selectedCamera.id,
-                    config,
-                    function(decodedText) {
-                        log('✓ 识别成功!');
-                        resultContent.textContent = decodedText;
-                        resultPanel.classList.add('show');
-                        resultInput.value = decodedText;
-                        
-                        if (navigator.vibrate) navigator.vibrate(200);
-                        
-                        setTimeout(() => {
-                            closeScan();
-                        }, 2000);
-                    },
-                    function(errorMessage) {
-                        // 静默处理
-                    }
-                );
-
-                isScanning = true;
-                loading.style.display = 'none';
-                log('✓ 扫描已启动，请对准二维码');
-
-            } catch (err) {
-                log('✗ 错误: ' + err.message);
-                loading.style.display = 'none';
-                alert('启动失败: ' + err.message + '\n\n建议：\n1. 检查摄像头权限\n2. 尝试在微信中打开\n3. 使用Chrome浏览器');
-            }
+        // 监听控制面板
+        speedControl.addEventListener('input', (e) => {
+            // 值越小，生成越快（间隔越小）
+            // 反转逻辑：滑块值越大，间隔越小
+            spawnRate = 550 - parseInt(e.target.value);
+            document.getElementById('density-display').innerText = spawnRate < 100 ? "高" : (spawnRate > 300 ? "低" : "中");
         });
 
-        async function closeScan() {
-            scanModal.classList.remove('active');
-            resultPanel.classList.remove('show');
+        chaosMode.addEventListener('change', (e) => {
+            isChaos = e.target.checked;
+        });
+
+        function createParticle() {
+            const el = document.createElement('div');
+            el.classList.add('falling-text');
+            el.innerText = TEXT_CONTENT;
+
+            // 随机属性设置
+            const startLeft = Math.random() * 100; // 0% 到 100%
+            const duration = Math.random() * 3 + 2; // 2秒 到 5秒 下落时间
+            const size = Math.random() * 10 + 10; // 10px 到 20px
+            const color = COLORS[Math.floor(Math.random() * COLORS.length)];
             
-            if (html5QrCode && isScanning) {
-                try {
-                    await html5QrCode.stop();
-                    await html5QrCode.clear();
-                    log('已停止');
-                } catch (e) {}
-                isScanning = false;
-            }
+            // 旋转角度：东倒西歪的关键
+            // 正常模式：-30度 到 30度
+            // 混沌模式：-360度 到 360度
+            const rotStart = isChaos ? (Math.random() * 720 - 360) : (Math.random() * 60 - 30);
+            const rotEnd = isChaos ? (Math.random() * 1440 - 720) : (rotStart + (Math.random() * 60 - 30));
+            
+            // 左右摇摆幅度
+            const swayAmount = Math.random() * 100 - 50; 
+
+            // 应用样式
+            el.style.left = `${startLeft}%`;
+            el.style.fontSize = `${size}px`;
+            el.style.color = color;
+            el.style.animation = `fall ${duration}s linear forwards`;
+            
+            // CSS 变量用于动画关键帧
+            el.style.setProperty('--rotation-end', `${rotEnd}deg`);
+            el.style.setProperty('--sway-end', `${swayAmount}px`);
+            el.style.transform = `rotate(${rotStart}deg)`;
+
+            // 随机透明度变化
+            el.style.opacity = Math.random() * 0.5 + 0.5;
+
+            scene.appendChild(el);
+
+            // 动画结束后清理 DOM
+            setTimeout(() => {
+                el.remove();
+            }, duration * 1000);
         }
 
-        closeBtn.addEventListener('click', closeScan);
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && isScanning) {
-                closeScan();
+        // 循环生成
+        let lastTime = 0;
+        function loop(timestamp) {
+            if (timestamp - lastTime > spawnRate) {
+                createParticle();
+                // 密度高的时候一次生成多个
+                if (spawnRate < 100 && Math.random() > 0.5) {
+                    setTimeout(createParticle, 50);
+                }
+                lastTime = timestamp;
             }
-        });
+            requestAnimationFrame(loop);
+        }
+
+        // 启动
+        requestAnimationFrame(loop);
+
+        // 初始爆发，让屏幕一开始就有内容
+        for(let i=0; i<20; i++) {
+            setTimeout(createParticle, i * 50);
+        }
+
     </script>
 </body>
 </html>
