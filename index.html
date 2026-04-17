@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>二维码扫描</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+        }
+        .container { 
+            background: white; 
+            padding: 40px 30px; 
+            border-radius: 20px; 
+            width: 100%; 
+            max-width: 400px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
+        }
+        h2 { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            color: #333; 
+            font-size: 22px;
+        }
+        .input-group { margin-bottom: 25px; }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            color: #666; 
+            font-size: 14px; 
+            font-weight: 500;
+        }
+        .input-wrapper { position: relative; }
+        input { 
+            width: 100%; 
+            padding: 14px 50px 14px 15px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            transition: all 0.3s;
+        }
+        input:focus { 
+            outline: none; 
+            border-color: #667eea; 
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .scan-btn { 
+            position: absolute; 
+            right: 8px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            border: none; 
+            width: 38px; 
+            height: 38px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            display: none; 
+            align-items: center; 
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+        }
+        .scan-btn svg { width: 22px; height: 22px; fill: white; }
+        
+        /* 手机端显示按钮 */
+        @media (pointer: coarse) {
+            .scan-btn { display: flex; }
+        }
+        
+        .tips { 
+            margin-top: 20px; 
+            padding: 15px; 
+            background: #f8f9fa; 
+            border-radius: 10px; 
+            font-size: 13px; 
+            color: #666; 
+            line-height: 1.6;
+        }
+        .tips strong { color: #333; }
+
+        /* 扫码弹窗 */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: #000; 
+            z-index: 9999; 
+            flex-direction: column;
+        }
+        .modal.active { display: flex; }
+        .modal-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 15px 20px; 
+            background: rgba(0,0,0,0.8);
+        }
+        .modal-title { color: white; font-size: 16px; }
+        .close-btn { 
+            background: rgba(255,255,255,0.2); 
+            border: none; 
+            color: white; 
+            width: 36px; height: 36px; 
+            border-radius: 50%; 
+            font-size: 22px; 
+            cursor: pointer;
+        }
+        #reader { 
+            flex: 1; 
+            position: relative; 
+            overflow: hidden;
+        }
+        #reader video { 
+            width: 100% !important; 
+            height: 100% !important; 
+            object-fit: cover;
+        }
+        .scan-frame { 
+            position: absolute; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            width: 280px; height: 280px; 
+            border: 2px solid rgba(255,255,255,0.3); 
+            border-radius: 20px; 
+            pointer-events: none;
+        }
+        .corner { 
+            position: absolute; 
+            width: 25px; height: 25px; 
+            border-color: #667eea; 
+            border-style: solid; 
+            border-width: 0;
+        }
+        .corner-tl { top: -2px; left: -2px; border-top-width: 4px; border-left-width: 4px; border-radius: 15px 0 0 0; }
+        .corner-tr { top: -2px; right: -2px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 15px 0 0; }
+        .corner-bl { bottom: -2px; left: -2px; border-bottom-width: 4px; border-left-width: 4px; border-radius: 0 0 0 15px; }
+        .corner-br { bottom: -2px; right: -2px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 15px 0; }
+        .scan-line { 
+            position: absolute; 
+            width: 100%; height: 3px; 
+            background: linear-gradient(to right, transparent, #667eea, transparent); 
+            box-shadow: 0 0 10px #667eea; 
+            animation: scan 2.5s linear infinite;
+        }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        .scan-tip { 
+            position: absolute; 
+            bottom: 80px; 
+            left: 0; right: 0; 
+            text-align: center; 
+            color: rgba(255,255,255,0.9); 
+            font-size: 14px;
+        }
+        .loading { 
+            position: absolute; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            color: white; 
+            text-align: center;
+        }
+        .spinner { 
+            width: 50px; height: 50px; 
+            border: 4px solid rgba(255,255,255,0.3); 
+            border-top-color: #667eea; 
+            border-radius: 50%; 
+            animation: spin 1s linear infinite; 
+            margin: 0 auto 15px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .toast { 
+            position: fixed; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: rgba(0,0,0,0.85); 
+            color: white; 
+            padding: 16px 28px; 
+            border-radius: 12px; 
+            display: none; 
+            z-index: 10000; 
+            font-size: 15px;
+        }
+        .toast.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔍 二维码扫描</h2>
+        
+        <div class="input-group">
+            <label>扫描结果</label>
+            <div class="input-wrapper">
+                <input type="text" id="resultInput" placeholder="点击相机图标开始扫码" readonly>
+                <button class="scan-btn" id="scanBtn">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M9.5 6.5v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zm0 13v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zm10-13v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zm0 13v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1zM3 7h3V5H3a2 2 0 0 0-2 2v3h2V7zm0 10v-3H1v3a2 2 0 0 0 2 2h3v-2H3zm17-10V5h-3v2h3v3h2V7a2 2 0 0 0-2-2zm0 10h-3v2h3a2 2 0 0 0 2-2v-3h-2v3z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="tips">
+            <strong>💡 使用提示：</strong><br>
+            • 手机端访问时会显示相机图标<br>
+            • 点击图标调起摄像头扫码<br>
+            • 识别结果自动填入上方输入框<br>
+            • 请允许浏览器摄像头权限
+        </div>
+    </div>
+
+    <div class="modal" id="scanModal">
+        <div class="modal-header">
+            <span class="modal-title">将二维码放入框内</span>
+            <button class="close-btn" id="closeBtn">×</button>
+        </div>
+        <div id="reader">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>正在启动摄像头...</div>
+            </div>
+        </div>
+        <div class="scan-frame">
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
+            <div class="scan-line"></div>
+        </div>
+        <div class="scan-tip">自动识别二维码 / 条形码</div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const scanBtn = document.getElementById('scanBtn');
+        const scanModal = document.getElementById('scanModal');
+        const closeBtn = document.getElementById('closeBtn');
+        const resultInput = document.getElementById('resultInput');
+        const toast = document.getElementById('toast');
+        const loading = document.getElementById('loading');
+
+        let html5QrCode = null;
+        let isScanning = false;
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        async function startScan() {
+            scanModal.classList.add('active');
+            loading.style.display = 'block';
+
+            try {
+                // 先获取可用摄像头列表
+                const cameras = await Html5Qrcode.getCameras();
+                console.log('检测到摄像头:', cameras);
+
+                if (cameras.length === 0) {
+                    throw new Error('未找到摄像头');
+                }
+
+                // 优先选择后置摄像头
+                const backCamera = cameras.find(c => 
+                    c.label.toLowerCase().includes('back') || 
+                    c.label.toLowerCase().includes('后置') ||
+                    c.label.toLowerCase().includes('environment') ||
+                    c.label.toLowerCase().includes('rear')
+                ) || cameras[cameras.length - 1]; // 默认最后一个通常是后置
+
+                html5QrCode = new Html5Qrcode("reader");
+
+                await html5QrCode.start(
+                    backCamera.id,
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                        aspectRatio: 1.0
+                    },
+                    onSuccess,
+                    onError
+                );
+
+                isScanning = true;
+                loading.style.display = 'none';
+
+            } catch (err) {
+                console.error('启动失败:', err);
+                
+                // 备用方案：使用 facingMode
+                try {
+                    html5QrCode = new Html5Qrcode("reader");
+                    await html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: 250 },
+                        onSuccess,
+                        onError
+                    );
+                    isScanning = true;
+                    loading.style.display = 'none';
+                } catch (err2) {
+                    loading.style.display = 'none';
+                    showToast('摄像头启动失败，请检查权限');
+                    setTimeout(closeScan, 2000);
+                }
+            }
+        }
+
+        function onSuccess(decodedText) {
+            resultInput.value = decodedText;
+            if (navigator.vibrate) navigator.vibrate(150);
+            showToast('✓ 识别成功');
+            setTimeout(closeScan, 600);
+        }
+
+        function onError(error) {
+            // 持续扫描中，忽略错误
+        }
+
+        async function closeScan() {
+            scanModal.classList.remove('active');
+            if (html5QrCode && isScanning) {
+                try {
+                    await html5QrCode.stop();
+                    html5QrCode.clear();
+                } catch (e) {}
+                isScanning = false;
+            }
+        }
+
+        scanBtn.addEventListener('click', startScan);
+        closeBtn.addEventListener('click', closeScan);
+        
+        // 点击背景关闭
+        scanModal.addEventListener('click', (e) => {
+            if (e.target === scanModal) closeScan();
+        });
+    </script>
+</body>
+</html>
