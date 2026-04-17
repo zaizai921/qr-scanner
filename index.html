@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>二维码扫描</title>
-    <script src="https://unpkg.com/@zxing/browser@0.1.1/umd/index.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -87,15 +87,20 @@
             position: relative; 
             overflow: hidden;
             background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         
-        #video { 
-            width: 100%; 
-            height: 100%; 
+        #reader video { 
+            width: 100% !important; 
+            height: 100% !important; 
             object-fit: cover;
+        }
+        
+        /* 隐藏库自带元素 */
+        #reader__scan_region,
+        #reader__dashboard,
+        #reader__status_span,
+        #reader__camera_permission_button {
+            display: none !important;
         }
         
         .scan-frame { 
@@ -140,15 +145,16 @@
             top: 60px;
             left: 10px;
             right: 10px;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             color: #0f0;
             padding: 10px;
             font-size: 12px;
             font-family: monospace;
             border-radius: 8px;
             z-index: 200;
-            max-height: 100px;
+            max-height: 120px;
             overflow-y: auto;
+            border: 1px solid #333;
         }
         
         .result-panel {
@@ -197,11 +203,17 @@
             margin: 0 auto 10px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .error-msg {
+            color: #ff6666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>刘旭让AI写的鹅鹅鹅  🔍 二维码扫描</h2>
+        <h2>🔍 二维码扫描</h2>
         <div class="input-group">
             <label>扫描结果</label>
             <div class="input-wrapper">
@@ -212,12 +224,13 @@
                     </svg>
                 </button>
             </div>
+            <div class="error-msg" id="errorMsg"></div>
         </div>
     </div>
 
     <div class="modal" id="scanModal">
         <div class="modal-header">
-            <span class="modal-title">二维码扫描 - ZXing引擎</span>
+            <span class="modal-title">二维码扫描</span>
             <button class="close-btn" id="closeBtn">×</button>
         </div>
         
@@ -226,7 +239,6 @@
                 <div class="spinner"></div>
                 <div>启动中...</div>
             </div>
-            <video id="video" autoplay playsinline muted></video>
         </div>
         
         <div class="debug-panel" id="debugPanel">等待启动...</div>
@@ -247,8 +259,6 @@
     </div>
 
     <script>
-        const { BrowserQRCodeReader } = window.ZXingBrowser;
-        
         const scanBtn = document.getElementById('scanBtn');
         const scanModal = document.getElementById('scanModal');
         const closeBtn = document.getElementById('closeBtn');
@@ -257,114 +267,115 @@
         const debugPanel = document.getElementById('debugPanel');
         const resultPanel = document.getElementById('resultPanel');
         const resultContent = document.getElementById('resultContent');
-        const video = document.getElementById('video');
+        const errorMsg = document.getElementById('errorMsg');
 
-        let codeReader = null;
+        let html5QrCode = null;
         let isScanning = false;
-        let scanCount = 0;
 
         function log(msg) {
             const time = new Date().toLocaleTimeString();
-            debugPanel.innerHTML = `[${time}] ${msg}<br>` + debugPanel.innerHTML;
+            const line = `[${time}] ${msg}`;
+            console.log(line);
+            debugPanel.innerHTML = line + '<br>' + debugPanel.innerHTML;
             const lines = debugPanel.innerHTML.split('<br>');
-            if (lines.length > 8) {
-                debugPanel.innerHTML = lines.slice(0, 8).join('<br>');
+            if (lines.length > 6) {
+                debugPanel.innerHTML = lines.slice(0, 6).join('<br>');
             }
         }
 
-        async function startScan() {
+        scanBtn.addEventListener('click', async function() {
+            errorMsg.textContent = '';
             scanModal.classList.add('active');
             loading.style.display = 'block';
-            debugPanel.innerHTML = '初始化ZXing引擎...';
+            debugPanel.innerHTML = '开始初始化...';
             resultPanel.classList.remove('show');
-            scanCount = 0;
 
             try {
-                codeReader = new BrowserQRCodeReader();
+                log('检查浏览器支持...');
                 
-                // 获取视频流
-                log('请求摄像头权限...');
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('浏览器不支持摄像头');
+                }
+
+                log('获取摄像头列表...');
+                const cameras = await Html5Qrcode.getCameras();
+                log(`找到 ${cameras.length} 个摄像头`);
+
+                if (cameras.length === 0) {
+                    throw new Error('没有可用摄像头');
+                }
+
+                // 选择后置摄像头
+                const selectedCamera = cameras.find(c => 
+                    c.label.toLowerCase().includes('back') || 
+                    c.label.toLowerCase().includes('后置')
+                ) || cameras[cameras.length - 1];
+
+                log(`使用摄像头: ${selectedCamera.label || selectedCamera.id}`);
+
+                // 清理旧的实例
+                if (html5QrCode) {
+                    try {
+                        await html5QrCode.stop();
+                    } catch(e) {}
+                }
+
+                html5QrCode = new Html5Qrcode("reader");
+
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+
+                log('启动扫描...');
+                
+                await html5QrCode.start(
+                    selectedCamera.id,
+                    config,
+                    function(decodedText) {
+                        log('✓ 识别成功!');
+                        resultContent.textContent = decodedText;
+                        resultPanel.classList.add('show');
+                        resultInput.value = decodedText;
+                        
+                        if (navigator.vibrate) navigator.vibrate(200);
+                        
+                        setTimeout(() => {
+                            closeScan();
+                        }, 2000);
+                    },
+                    function(errorMessage) {
+                        // 静默处理，持续扫描
                     }
-                });
-                
-                video.srcObject = stream;
-                await video.play();
-                
-                loading.style.display = 'none';
-                log('✓ 摄像头已启动');
-                
+                );
+
                 isScanning = true;
-                
-                // 开始持续扫描
-                scanLoop();
-                
+                loading.style.display = 'none';
+                log('✓ 扫描已启动');
+
             } catch (err) {
                 log('✗ 错误: ' + err.message);
                 loading.style.display = 'none';
+                errorMsg.textContent = '错误: ' + err.message;
                 alert('启动失败: ' + err.message);
             }
-        }
+        });
 
-        async function scanLoop() {
-            if (!isScanning) return;
-            
-            try {
-                scanCount++;
-                if (scanCount % 10 === 0) {
-                    log(`扫描中...(${scanCount})`);
-                }
-                
-                // 从视频流解码
-                const result = await codeReader.decodeFromVideoElement(video);
-                
-                if (result) {
-                    const text = result.getText();
-                    log('✓ 识别成功: ' + text.substring(0, 20));
-                    
-                    resultContent.textContent = text;
-                    resultPanel.classList.add('show');
-                    resultInput.value = text;
-                    
-                    if (navigator.vibrate) navigator.vibrate(200);
-                    
-                    // 停止扫描
-                    setTimeout(() => {
-                        closeScan();
-                    }, 2000);
-                    return;
-                }
-                
-            } catch (err) {
-                // 解码失败是正常现象，继续扫描
-            }
-            
-            // 继续下一帧
-            if (isScanning) {
-                requestAnimationFrame(scanLoop);
-            }
-        }
-
-        function closeScan() {
-            isScanning = false;
+        async function closeScan() {
             scanModal.classList.remove('active');
             resultPanel.classList.remove('show');
             
-            // 停止视频流
-            if (video.srcObject) {
-                const tracks = video.srcObject.getTracks();
-                tracks.forEach(track => track.stop());
-                video.srcObject = null;
+            if (html5QrCode && isScanning) {
+                try {
+                    await html5QrCode.stop();
+                    await html5QrCode.clear();
+                    log('扫描已停止');
+                } catch (e) {}
+                isScanning = false;
             }
-            
-            scanCount = 0;
         }
 
-        scanBtn.addEventListener('click', startScan);
         closeBtn.addEventListener('click', closeScan);
 
         document.addEventListener('visibilitychange', () => {
