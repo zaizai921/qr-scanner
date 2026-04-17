@@ -24,20 +24,9 @@
             max-width: 400px; 
             box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
         }
-        h2 { 
-            text-align: center; 
-            margin-bottom: 30px; 
-            color: #333; 
-            font-size: 22px;
-        }
+        h2 { text-align: center; margin-bottom: 30px; color: #333; font-size: 22px; }
         .input-group { margin-bottom: 25px; }
-        label { 
-            display: block; 
-            margin-bottom: 8px; 
-            color: #666; 
-            font-size: 14px; 
-            font-weight: 500;
-        }
+        label { display: block; margin-bottom: 8px; color: #666; font-size: 14px; font-weight: 500; }
         .input-wrapper { position: relative; }
         input { 
             width: 100%; 
@@ -45,12 +34,6 @@
             border: 2px solid #e0e0e0; 
             border-radius: 12px; 
             font-size: 16px; 
-            transition: all 0.3s;
-        }
-        input:focus { 
-            outline: none; 
-            border-color: #667eea; 
-            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
         }
         .scan-btn { 
             position: absolute; 
@@ -66,24 +49,10 @@
             display: none; 
             align-items: center; 
             justify-content: center;
-            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
         }
         .scan-btn svg { width: 22px; height: 22px; fill: white; }
+        @media (pointer: coarse) { .scan-btn { display: flex; } }
         
-        @media (pointer: coarse) {
-            .scan-btn { display: flex; }
-        }
-        
-        .tips { 
-            margin-top: 20px; 
-            padding: 15px; 
-            background: #f8f9fa; 
-            border-radius: 10px; 
-            font-size: 13px; 
-            color: #666; 
-            line-height: 1.6;
-        }
-
         .modal { 
             display: none; 
             position: fixed; 
@@ -98,111 +67,132 @@
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            padding: 15px 20px; 
-            background: rgba(0,0,0,0.8);
+            padding: 12px 15px; 
+            background: rgba(0,0,0,0.9);
             z-index: 100;
         }
-        .modal-title { color: white; font-size: 16px; }
+        .modal-title { color: white; font-size: 15px; }
         .close-btn { 
             background: rgba(255,255,255,0.2); 
             border: none; 
             color: white; 
-            width: 36px; height: 36px; 
+            width: 32px; height: 32px; 
             border-radius: 50%; 
-            font-size: 22px; 
+            font-size: 20px; 
             cursor: pointer;
         }
         
-        /* 相机容器 */
         #reader { 
             flex: 1; 
             position: relative; 
             overflow: hidden;
             background: #000;
+            min-height: 300px;
         }
         
-        /* 隐藏 html5-qrcode 自带的扫描框 */
         #reader video { 
             width: 100% !important; 
             height: 100% !important; 
             object-fit: cover;
         }
         
-        /* 强制隐藏库自带的扫描框和文字 */
-        #reader__scan_region {
-            background: transparent !important;
-        }
-        #reader__scan_region img {
+        /* 隐藏库自带元素 */
+        #reader__scan_region,
+        #reader__dashboard,
+        #reader__status_span,
+        #reader__camera_permission_button,
+        .html5-qrcode-element {
             display: none !important;
-        }
-        #reader__dashboard {
-            display: none !important;
-        }
-        #reader__status_span {
-            display: none !important;
-        }
-        #reader__camera_permission_button {
-            display: none !important;
-        }
-        #reader__camera_scan_region {
-            background: transparent !important;
-            border: none !important;
         }
         
-        /* 自定义扫描框 - 唯一可见的框 */
-        .custom-scan-frame { 
+        /* 扫描框 */
+        .scan-frame { 
             position: absolute; 
-            top: 50%; 
+            top: 45%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
-            width: 280px; 
-            height: 280px; 
+            width: 240px; 
+            height: 240px; 
             border: 3px solid #00ff00; 
-            border-radius: 20px; 
+            border-radius: 15px; 
             pointer-events: none;
             z-index: 50;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
         }
         
         .corner { 
             position: absolute; 
-            width: 30px; 
-            height: 30px; 
+            width: 25px; 
+            height: 25px; 
             border-color: #00ff00; 
             border-style: solid; 
             border-width: 0;
         }
-        .corner-tl { top: -3px; left: -3px; border-top-width: 5px; border-left-width: 5px; border-radius: 15px 0 0 0; }
-        .corner-tr { top: -3px; right: -3px; border-top-width: 5px; border-right-width: 5px; border-radius: 0 15px 0 0; }
-        .corner-bl { bottom: -3px; left: -3px; border-bottom-width: 5px; border-left-width: 5px; border-radius: 0 0 0 15px; }
-        .corner-br { bottom: -3px; right: -3px; border-bottom-width: 5px; border-right-width: 5px; border-radius: 0 0 15px 0; }
+        .corner-tl { top: -3px; left: -3px; border-top-width: 4px; border-left-width: 4px; border-radius: 12px 0 0 0; }
+        .corner-tr { top: -3px; right: -3px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 12px 0 0; }
+        .corner-bl { bottom: -3px; left: -3px; border-bottom-width: 4px; border-left-width: 4px; border-radius: 0 0 0 12px; }
+        .corner-br { bottom: -3px; right: -3px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 12px 0; }
         
         .scan-line { 
             position: absolute; 
             width: 100%; 
-            height: 3px; 
-            background: linear-gradient(to right, transparent, #00ff00, transparent); 
-            box-shadow: 0 0 15px #00ff00, 0 0 30px #00ff00; 
+            height: 2px; 
+            background: #00ff00; 
+            box-shadow: 0 0 8px #00ff00; 
             animation: scan 2s linear infinite;
         }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
         
-        @keyframes scan { 
-            0% { top: 0; opacity: 0; } 
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; } 
+        /* 调试面板 - 直接显示在页面上 */
+        .debug-panel {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.85);
+            color: #0f0;
+            padding: 10px;
+            font-size: 12px;
+            font-family: monospace;
+            border-radius: 8px;
+            z-index: 200;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #333;
         }
+        
+        .debug-panel .error { color: #f66; }
+        .debug-panel .success { color: #0f0; font-weight: bold; }
+        .debug-panel .info { color: #ff0; }
+        
+        /* 结果显示区域 */
+        .result-panel {
+            position: absolute;
+            bottom: 80px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,255,0,0.9);
+            color: black;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 200;
+            display: none;
+            word-break: break-all;
+            font-size: 14px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .result-panel.show { display: block; }
+        .result-panel .label { font-weight: bold; margin-bottom: 5px; }
         
         .scan-tip { 
             position: absolute; 
-            bottom: 100px; 
+            bottom: 20px; 
             left: 0; 
             right: 0; 
             text-align: center; 
-            color: white; 
-            font-size: 16px;
-            font-weight: 500;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            color: rgba(255,255,255,0.8); 
+            font-size: 14px;
             z-index: 50;
         }
         
@@ -216,39 +206,19 @@
             z-index: 60;
         }
         .spinner { 
-            width: 50px; 
-            height: 50px; 
-            border: 4px solid rgba(255,255,255,0.3); 
+            width: 40px; height: 40px; 
+            border: 3px solid rgba(255,255,255,0.3); 
             border-top-color: #00ff00; 
             border-radius: 50%; 
             animation: spin 1s linear infinite; 
-            margin: 0 auto 15px;
+            margin: 0 auto 10px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* 识别状态提示 */
-        .status-toast {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,255,0,0.9);
-            color: black;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            display: none;
-            z-index: 100;
-        }
-        .status-toast.show {
-            display: block;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>刘旭瞎搞着玩的hhhh  🔍 二维码扫描</h2>
-        
+        <h2>刘旭让AI写的   🔍 二维码扫描</h2>
         <div class="input-group">
             <label>扫描结果</label>
             <div class="input-wrapper">
@@ -260,31 +230,33 @@
                 </button>
             </div>
         </div>
-
-        <div class="tips">
-            <strong>💡 使用提示：</strong><br>
-            • 点击相机图标调起摄像头<br>
-            • 将二维码对准绿色扫描框内<br>
-            • 保持二维码清晰、光线充足<br>
-            • 距离建议 10-20 厘米
-        </div>
     </div>
 
     <div class="modal" id="scanModal">
         <div class="modal-header">
-            <span class="modal-title">将二维码放入框内扫描</span>
+            <span class="modal-title">二维码扫描 - 调试模式</span>
             <button class="close-btn" id="closeBtn">×</button>
         </div>
         
         <div id="reader">
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <div>正在启动摄像头...</div>
+                <div>启动中...</div>
             </div>
         </div>
         
-        <!-- 唯一的自定义扫描框 -->
-        <div class="custom-scan-frame" id="scanFrame">
+        <!-- 实时调试信息 -->
+        <div class="debug-panel" id="debugPanel">
+            <div>等待启动...</div>
+        </div>
+        
+        <!-- 识别结果直接显示 -->
+        <div class="result-panel" id="resultPanel">
+            <div class="label">✓ 识别成功</div>
+            <div id="resultContent"></div>
+        </div>
+        
+        <div class="scan-frame">
             <div class="corner corner-tl"></div>
             <div class="corner corner-tr"></div>
             <div class="corner corner-bl"></div>
@@ -292,8 +264,7 @@
             <div class="scan-line"></div>
         </div>
         
-        <div class="scan-tip">对准二维码自动识别</div>
-        <div class="status-toast" id="statusToast">✓ 识别成功</div>
+        <div class="scan-tip">将二维码放入绿色框内</div>
     </div>
 
     <script>
@@ -302,50 +273,78 @@
         const closeBtn = document.getElementById('closeBtn');
         const resultInput = document.getElementById('resultInput');
         const loading = document.getElementById('loading');
-        const statusToast = document.getElementById('statusToast');
+        const debugPanel = document.getElementById('debugPanel');
+        const resultPanel = document.getElementById('resultPanel');
+        const resultContent = document.getElementById('resultContent');
 
         let html5QrCode = null;
         let isScanning = false;
-        let lastResult = '';
+        let scanCount = 0;
+        let lastLogTime = 0;
+
+        // 直接显示到页面
+        function log(msg, type = 'info') {
+            const now = Date.now();
+            const time = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            
+            // 限制刷新频率，避免卡顿
+            if (now - lastLogTime < 100 && type === 'info') return;
+            lastLogTime = now;
+            
+            const line = `<div class="${className}">[${time}] ${msg}</div>`;
+            debugPanel.innerHTML = line + debugPanel.innerHTML;
+            // 只保留最近10条
+            const lines = debugPanel.querySelectorAll('div');
+            if (lines.length > 10) {
+                for (let i = 10; i < lines.length; i++) {
+                    lines[i].remove();
+                }
+            }
+        }
 
         async function startScan() {
             scanModal.classList.add('active');
             loading.style.display = 'block';
+            debugPanel.innerHTML = '<div>开始初始化...</div>';
+            resultPanel.classList.remove('show');
+            scanCount = 0;
 
             try {
+                log('获取摄像头列表...', 'info');
                 const cameras = await Html5Qrcode.getCameras();
-                console.log('找到摄像头:', cameras);
+                log(`找到 ${cameras.length} 个摄像头`, 'success');
+                
+                cameras.forEach((c, i) => {
+                    log(`摄像头${i+1}: ${c.label || '未命名'}`, 'info');
+                });
 
                 if (cameras.length === 0) {
                     throw new Error('未找到摄像头');
                 }
 
                 // 选择后置摄像头
-                let selectedCamera = cameras.find(c => 
+                const backCamera = cameras.find(c => 
                     c.label.toLowerCase().includes('back') || 
                     c.label.toLowerCase().includes('后置') ||
                     c.label.toLowerCase().includes('environment')
                 ) || cameras[cameras.length - 1];
 
+                log(`使用: ${backCamera.label || backCamera.id.substring(0,20)}...`, 'info');
+
                 html5QrCode = new Html5Qrcode("reader");
 
-                // 关键配置：禁用库自带的 UI，使用纯视频流
+                // 最简配置
                 const config = {
-                    fps: 10,
-                    qrbox: null, // 禁用自带的扫描框
-                    aspectRatio: 1.0,
-                    disableFlip: false,
-                    // 视频约束：强制高清
-                    videoConstraints: {
-                        facingMode: { exact: "environment" },
-                        width: { min: 640, ideal: 1920, max: 1920 },
-                        height: { min: 480, ideal: 1080, max: 1080 },
-                        advanced: [{ zoom: 1.5 }] // 尝试放大
-                    }
+                    fps: 5,
+                    qrbox: null,
+                    aspectRatio: 1.0
                 };
 
+                log('启动扫描引擎...', 'info');
+                
                 await html5QrCode.start(
-                    selectedCamera.id,
+                    backCamera.id,
                     config,
                     onSuccess,
                     onError
@@ -353,68 +352,48 @@
 
                 isScanning = true;
                 loading.style.display = 'none';
-                console.log('扫描已启动');
+                log('✓ 扫描已启动，请对准二维码', 'success');
 
             } catch (err) {
-                console.error('启动失败:', err);
-                
-                // 备用方案：降低要求
-                try {
-                    html5QrCode = new Html5Qrcode("reader");
-                    await html5QrCode.start(
-                        { facingMode: "environment" },
-                        { 
-                            fps: 10, 
-                            qrbox: null,
-                            videoConstraints: {
-                                width: { ideal: 1280 },
-                                height: { ideal: 720 }
-                            }
-                        },
-                        onSuccess,
-                        onError
-                    );
-                    isScanning = true;
-                    loading.style.display = 'none';
-                } catch (err2) {
-                    loading.style.display = 'none';
-                    alert('摄像头启动失败: ' + err2.message);
-                    closeScan();
-                }
+                log('✗ 错误: ' + err.message, 'error');
+                loading.style.display = 'none';
+                alert('启动失败: ' + err.message);
             }
         }
 
         function onSuccess(decodedText, decodedResult) {
-            // 防止重复识别
-            if (decodedText === lastResult) return;
-            lastResult = decodedText;
+            scanCount++;
             
-            console.log('识别成功:', decodedText);
+            // 显示结果在页面上
+            resultContent.textContent = decodedText;
+            resultPanel.classList.add('show');
             
-            // 显示状态
-            statusToast.classList.add('show');
+            log(`✓ 第${scanCount}次识别成功!`, 'success');
+            log(`内容: ${decodedText.substring(0,30)}...`, 'success');
             
             // 填充输入框
             resultInput.value = decodedText;
             
-            // 震动反馈
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            // 震动
+            if (navigator.vibrate) navigator.vibrate(200);
             
-            // 延迟后关闭
+            // 3秒后自动关闭扫描
             setTimeout(() => {
-                statusToast.classList.remove('show');
-                alert('识别结果：\n\n' + decodedText);
                 closeScan();
-            }, 500);
+            }, 3000);
         }
 
         function onError(errorMessage) {
-            // 静默处理，持续扫描
+            scanCount++;
+            // 每20次记录一次
+            if (scanCount % 20 === 0) {
+                log(`已扫描${scanCount}帧...`, 'info');
+            }
         }
 
         async function closeScan() {
             scanModal.classList.remove('active');
-            lastResult = '';
+            resultPanel.classList.remove('show');
             
             if (html5QrCode && isScanning) {
                 try {
@@ -423,17 +402,12 @@
                 } catch (e) {}
                 isScanning = false;
             }
+            scanCount = 0;
         }
 
         scanBtn.addEventListener('click', startScan);
         closeBtn.addEventListener('click', closeScan);
-        
-        // 点击背景关闭
-        scanModal.addEventListener('click', (e) => {
-            if (e.target === scanModal) closeScan();
-        });
 
-        // 页面隐藏时停止
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isScanning) {
                 closeScan();
