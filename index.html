@@ -2,184 +2,349 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文字飘落效果</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>二维码扫描</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=ZCOOL+KuaiLe&display=swap');
-
-        body {
+        * {
             margin: 0;
-            overflow: hidden;
-            background-color: #0f172a;
-            font-family: 'ZCOOL KuaiLe', cursive;
+            padding: 0;
+            box-sizing: border-box;
         }
-
-        /* 背景动画 - 深邃星空感 */
-        .bg-animated {
-            background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-            position: absolute;
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .scan-btn {
+            background: #07c160;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3);
+            transition: transform 0.2s;
+        }
+        
+        .scan-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .scan-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        #scanner-container {
+            display: none;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
+            background: #000;
+            z-index: 1000;
+            flex-direction: column;
         }
-
-        /* 飘落文字的基础样式 */
-        .falling-text {
+        
+        #scanner-container.active {
+            display: flex;
+        }
+        
+        .scanner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        .close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        
+        .video-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #canvas {
+            display: none;
+        }
+        
+        .scan-frame {
             position: absolute;
-            top: -50px; /* 从屏幕上方外开始 */
-            color: rgba(255, 255, 255, 0.8);
-            pointer-events: none; /* 不阻挡鼠标事件 */
-            user-select: none;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-            will-change: transform, opacity;
+            width: 250px;
+            height: 250px;
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 12px;
         }
-
-        /* 关键帧动画：下落 + 摇摆 */
-        @keyframes fall {
-            0% {
-                transform: translateY(0) rotate(0deg) translateX(0);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-            }
-            90% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(110vh) rotate(var(--rotation-end)) translateX(var(--sway-end));
-                opacity: 0;
-            }
+        
+        .scan-frame::before,
+        .scan-frame::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: #07c160;
+            border-style: solid;
         }
-
-        /* 摇摆动画辅助 */
-        @keyframes sway {
-            0% { margin-left: 0; }
-            50% { margin-left: 50px; }
-            100% { margin-left: 0; }
+        
+        .scan-frame::before {
+            top: -2px;
+            left: -2px;
+            border-width: 4px 0 0 4px;
+            border-top-left-radius: 12px;
+        }
+        
+        .scan-frame::after {
+            bottom: -2px;
+            right: -2px;
+            border-width: 0 4px 4px 0;
+            border-bottom-right-radius: 12px;
+        }
+        
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #07c160;
+            top: 0;
+            animation: scan 2s linear infinite;
+            box-shadow: 0 0 8px #07c160;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        .scan-tip {
+            position: absolute;
+            bottom: 100px;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .result-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            z-index: 2000;
+            display: none;
+            max-width: 80%;
+            word-break: break-all;
+            text-align: center;
+        }
+        
+        .result-toast.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        .permission-tip {
+            color: #999;
+            font-size: 14px;
+            margin-top: 15px;
+            text-align: center;
+            line-height: 1.6;
         }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden">
+<body>
+    <h1>🔍 二维码扫描</h1>
+    
+    <button class="scan-btn" onclick="startScan()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        点击扫码
+    </button>
+    
+    <p class="permission-tip">
+        首次使用需要允许摄像头权限<br>
+        请确保在 HTTPS 或 localhost 环境下访问
+    </p>
 
-    <!-- 背景层 -->
-    <div class="bg-animated"></div>
-
-    <!-- 控制面板 (可选，增加互动性) -->
-    <div class="absolute top-4 left-4 z-50 bg-slate-800/80 backdrop-blur-sm p-4 rounded-lg border border-slate-600 shadow-xl text-white">
-        <h1 class="text-lg font-bold mb-2 text-pink-400">✨ 文字飘落特效</h1>
-        <div class="flex flex-col gap-2 text-sm text-slate-300">
-            <p>密度: <span id="density-display">中</span></p>
-            <input type="range" min="50" max="500" value="200" class="w-32 accent-pink-500" id="speed-control">
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="chaos-mode" class="accent-pink-500">
-                <span>混沌模式 (疯狂旋转)</span>
-            </label>
+    <!-- 扫码界面 -->
+    <div id="scanner-container">
+        <div class="scanner-header">
+            <span>将二维码放入框内</span>
+            <button class="close-btn" onclick="stopScan()">✕</button>
+        </div>
+        <div class="video-wrapper">
+            <video id="video" playsinline autoplay muted></video>
+            <canvas id="canvas"></canvas>
+            <div class="scan-frame">
+                <div class="scan-line"></div>
+            </div>
+            <p class="scan-tip">自动识别二维码</p>
         </div>
     </div>
 
-    <!-- 容器 -->
-    <div id="scene" class="relative w-full h-full"></div>
+    <div id="result-toast" class="result-toast"></div>
 
     <script>
-        const scene = document.getElementById('scene');
-        const speedControl = document.getElementById('speed-control');
-        const chaosMode = document.getElementById('chaos-mode');
-        
-        // 配置参数
-        const TEXT_CONTENT = "付梓沫吃屎";
-        const COLORS = [
-            '#ffffff', // 白
-            '#fca5a5', // 浅红
-            '#fdba74', // 橙
-            '#86efac', // 绿
-            '#93c5fd', // 蓝
-            '#c4b5fd', // 紫
-            '#f0abfc'  // 粉
-        ];
-        
-        let spawnRate = 200; // 生成间隔 ms
-        let isChaos = false;
+        let videoStream = null;
+        let animationId = null;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const scannerContainer = document.getElementById('scanner-container');
+        const resultToast = document.getElementById('result-toast');
 
-        // 监听控制面板
-        speedControl.addEventListener('input', (e) => {
-            // 值越小，生成越快（间隔越小）
-            // 反转逻辑：滑块值越大，间隔越小
-            spawnRate = 550 - parseInt(e.target.value);
-            document.getElementById('density-display').innerText = spawnRate < 100 ? "高" : (spawnRate > 300 ? "低" : "中");
-        });
+        async function startScan() {
+            try {
+                // 请求摄像头权限，优先使用后置摄像头
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
 
-        chaosMode.addEventListener('change', (e) => {
-            isChaos = e.target.checked;
-        });
+                video.srcObject = videoStream;
+                
+                // 等待视频准备好
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        resolve();
+                    };
+                });
 
-        function createParticle() {
-            const el = document.createElement('div');
-            el.classList.add('falling-text');
-            el.innerText = TEXT_CONTENT;
-
-            // 随机属性设置
-            const startLeft = Math.random() * 100; // 0% 到 100%
-            const duration = Math.random() * 3 + 2; // 2秒 到 5秒 下落时间
-            const size = Math.random() * 10 + 10; // 10px 到 20px
-            const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-            
-            // 旋转角度：东倒西歪的关键
-            // 正常模式：-30度 到 30度
-            // 混沌模式：-360度 到 360度
-            const rotStart = isChaos ? (Math.random() * 720 - 360) : (Math.random() * 60 - 30);
-            const rotEnd = isChaos ? (Math.random() * 1440 - 720) : (rotStart + (Math.random() * 60 - 30));
-            
-            // 左右摇摆幅度
-            const swayAmount = Math.random() * 100 - 50; 
-
-            // 应用样式
-            el.style.left = `${startLeft}%`;
-            el.style.fontSize = `${size}px`;
-            el.style.color = color;
-            el.style.animation = `fall ${duration}s linear forwards`;
-            
-            // CSS 变量用于动画关键帧
-            el.style.setProperty('--rotation-end', `${rotEnd}deg`);
-            el.style.setProperty('--sway-end', `${swayAmount}px`);
-            el.style.transform = `rotate(${rotStart}deg)`;
-
-            // 随机透明度变化
-            el.style.opacity = Math.random() * 0.5 + 0.5;
-
-            scene.appendChild(el);
-
-            // 动画结束后清理 DOM
-            setTimeout(() => {
-                el.remove();
-            }, duration * 1000);
-        }
-
-        // 循环生成
-        let lastTime = 0;
-        function loop(timestamp) {
-            if (timestamp - lastTime > spawnRate) {
-                createParticle();
-                // 密度高的时候一次生成多个
-                if (spawnRate < 100 && Math.random() > 0.5) {
-                    setTimeout(createParticle, 50);
+                scannerContainer.classList.add('active');
+                scanFrame();
+                
+            } catch (err) {
+                console.error('摄像头错误:', err);
+                let msg = '无法访问摄像头';
+                if (err.name === 'NotAllowedError') {
+                    msg = '摄像头权限被拒绝，请在浏览器设置中允许访问摄像头';
+                } else if (err.name === 'NotFoundError') {
+                    msg = '未找到摄像头设备';
+                } else if (err.name === 'NotReadableError') {
+                    msg = '摄像头被其他应用占用';
+                } else if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    msg = '当前为非安全环境(HTTP)，请使用 HTTPS 或 localhost 访问';
                 }
-                lastTime = timestamp;
+                alert(msg);
             }
-            requestAnimationFrame(loop);
         }
 
-        // 启动
-        requestAnimationFrame(loop);
-
-        // 初始爆发，让屏幕一开始就有内容
-        for(let i=0; i<20; i++) {
-            setTimeout(createParticle, i * 50);
+        function stopScan() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            scannerContainer.classList.remove('active');
         }
 
+        function scanFrame() {
+            if (!videoStream) return;
+            
+            // 确保视频有数据
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // 设置 canvas 尺寸与视频一致
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // 绘制当前帧
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 获取图像数据
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // 使用 jsQR 解析
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'attemptBoth'
+                });
+                
+                if (code) {
+                    // 扫描成功
+                    console.log('扫描结果:', code.data);
+                    stopScan();
+                    showResult(code.data);
+                    return;
+                }
+            }
+            
+            animationId = requestAnimationFrame(scanFrame);
+        }
+
+        function showResult(text) {
+            // 使用 alert 弹出结果（按你要求）
+            alert('扫描结果：\n\n' + text);
+            
+            // 同时显示一个美观的 toast（可选）
+            resultToast.textContent = '扫描成功：' + text;
+            resultToast.classList.add('show');
+            setTimeout(() => {
+                resultToast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', stopScan);
     </script>
 </body>
 </html>
