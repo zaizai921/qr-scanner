@@ -299,36 +299,93 @@
             scannerContainer.classList.remove('active');
         }
 
+        // 新增：扫描框在视频中的实际坐标（用于裁剪分析区域）
+        const SCAN_FRAME_SIZE = 250; // 与 CSS 中的扫描框大小一致
+
         function scanFrame() {
             if (!videoStream) return;
-            
-            // 确保视频有数据
+
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                // 设置 canvas 尺寸与视频一致
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
-                
-                // 绘制当前帧
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
+
+                // 计算扫描框在 canvas 上的实际位置和大小（居中）
+                const frameX = Math.floor((canvas.width - SCAN_FRAME_SIZE) / 2);
+                const frameY = Math.floor((canvas.height - SCAN_FRAME_SIZE) / 2);
+
+                // 只绘制扫描框区域，放大到全 canvas 解析（提升密集码识别率）
+                ctx.drawImage(
+                    video,
+                    frameX, frameY, SCAN_FRAME_SIZE, SCAN_FRAME_SIZE,  // 源：扫描框区域
+                    0, 0, canvas.width, canvas.height                  // 目标：拉伸到全 canvas
+                );
+
                 // 获取图像数据
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                
-                // 使用 jsQR 解析
-                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+
+                // 预处理：转为灰度 + 自适应二值化，增强对比度
+                const processedData = preprocessImage(imageData);
+
+                // 解析（降低尝试次数以提升速度，或保持 attemptBoth 确保兼容性）
+                const code = jsQR(processedData.data, processedData.width, processedData.height, {
                     inversionAttempts: 'attemptBoth'
                 });
-                
+
                 if (code) {
-                    // 扫描成功
                     console.log('扫描结果:', code.data);
                     stopScan();
                     showResult(code.data);
                     return;
                 }
             }
-            
-            animationId = requestAnimationFrame(scanFrame);
+
+            // 降低频率：每 150ms 解析一次，而非 60fps 狂刷
+            setTimeout(() => {
+                animationId = requestAnimationFrame(scanFrame);
+            }, 150);
+        }
+
+        // 图像预处理：灰度化 + 简单二值化
+        function preprocessImage(imageData) {
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+
+            // 创建新的 Uint8ClampedArray 用于灰度图
+            const grayData = new Uint8ClampedArray(width * height * 4);
+
+            // 计算平均亮度用于二值化阈值
+            let totalBrightness = 0;
+            const pixelCount = width * height;
+
+            for (let i = 0; i < pixelCount; i++) {
+                const r = data[i * 4];
+                const g = data[i * 4 + 1];
+                const b = data[i * 4 + 2];
+                // 亮度公式
+                const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+                totalBrightness += brightness;
+            }
+
+            // 自适应阈值（比全局平均值略低，确保黑色模块被识别）
+            const threshold = (totalBrightness / pixelCount) * 0.7;
+
+            for (let i = 0; i < pixelCount; i++) {
+                const r = data[i * 4];
+                const g = data[i * 4 + 1];
+                const b = data[i * 4 + 2];
+                const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                // 二值化：黑或白
+                const value = brightness < threshold ? 0 : 255;
+
+                grayData[i * 4] = value;     // R
+                grayData[i * 4 + 1] = value; // G
+                grayData[i * 4 + 2] = value; // B
+                grayData[i * 4 + 3] = 255;   // Alpha
+            }
+
+            return new ImageData(grayData, width, height);
         }
 
         function showResult(text) {
