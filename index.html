@@ -92,23 +92,25 @@
         #reader {
             flex: 1;
             width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
         
-        /* 确保视频铺满 */
         #reader video {
             object-fit: cover !important;
             width: 100% !important;
             height: 100% !important;
         }
         
-        /* 隐藏默认的扫描框，我们自己控制 */
-        #reader__dashboard_section_csr span {
+        /* 隐藏 Html5Qrcode 默认 UI */
+        #reader__dashboard_section_csr,
+        #reader__dashboard_section_swaplink,
+        #reader__camera_permission_button,
+        #reader__status_span {
             display: none !important;
         }
         
+        /* 自定义扫描框 */
         .scan-overlay {
             position: absolute;
             top: 0;
@@ -117,40 +119,42 @@
             height: 100%;
             pointer-events: none;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 5;
         }
         
         .scan-frame {
-            width: 280px;
-            height: 280px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 16px;
+            width: 320px;
+            height: 320px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
             position: relative;
+            background: rgba(0,0,0,0.1);
         }
         
         .scan-frame .corner {
             position: absolute;
-            width: 24px;
-            height: 24px;
+            width: 30px;
+            height: 30px;
             border-color: #07c160;
             border-style: solid;
         }
         
-        .corner-tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 16px; }
-        .corner-tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 16px; }
-        .corner-bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 16px; }
-        .corner-br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 16px; }
+        .corner-tl { top: -2px; left: -2px; border-width: 5px 0 0 5px; border-top-left-radius: 20px; }
+        .corner-tr { top: -2px; right: -2px; border-width: 5px 5px 0 0; border-top-right-radius: 20px; }
+        .corner-bl { bottom: -2px; left: -2px; border-width: 0 0 5px 5px; border-bottom-left-radius: 20px; }
+        .corner-br { bottom: -2px; right: -2px; border-width: 0 5px 5px 0; border-bottom-right-radius: 20px; }
         
         .scan-line {
             position: absolute;
             width: 100%;
-            height: 2px;
-            background: #07c160;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #07c160, transparent);
             top: 0;
-            animation: scan 2.5s linear infinite;
-            box-shadow: 0 0 10px #07c160, 0 0 20px rgba(7, 193, 96, 0.5);
+            animation: scan 2s linear infinite;
+            box-shadow: 0 0 15px #07c160, 0 0 30px rgba(7, 193, 96, 0.6);
         }
         
         @keyframes scan {
@@ -161,13 +165,12 @@
         }
         
         .scan-tip {
-            position: absolute;
-            bottom: 80px;
+            margin-top: 40px;
             color: rgba(255,255,255,0.9);
-            font-size: 15px;
+            font-size: 16px;
             background: rgba(0,0,0,0.5);
-            padding: 8px 20px;
-            border-radius: 20px;
+            padding: 10px 24px;
+            border-radius: 24px;
         }
         
         .permission-tip {
@@ -177,22 +180,10 @@
             text-align: center;
             line-height: 1.6;
         }
-        
-        .camera-select {
-            display: none;
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            font-size: 14px;
-            width: 80%;
-            max-width: 300px;
-            background: white;
-        }
     </style>
 </head>
 <body>
-    <h1>🔍 二维码扫描V4</h1>
+    <h1>🔍 二维码扫描V5</h1>
     
     <button class="scan-btn" onclick="startScan()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -204,19 +195,15 @@
         点击扫码
     </button>
     
-    <select id="camera-select" class="camera-select" onchange="startScanWithCamera(this.value)">
-        <option value="">自动选择摄像头...</option>
-    </select>
-    
     <p class="permission-tip">
         请将二维码对准扫描框<br>
-        支持高密二维码 / 反光 / 模糊场景
+        支持高密二维码识别
     </p>
 
     <!-- 扫码界面 -->
     <div id="scanner-container">
         <div class="scanner-header">
-            <span>将二维码放入框内自动识别</span>
+            <span>将二维码放入框内</span>
             <button class="close-btn" onclick="stopScan()">✕</button>
         </div>
         <div id="reader"></div>
@@ -235,81 +222,42 @@
     <script>
         let html5QrCode = null;
         const scannerContainer = document.getElementById('scanner-container');
-        const cameraSelect = document.getElementById('camera-select');
-
-        // 获取后置摄像头
-        async function getBackCamera() {
-            try {
-                const devices = await Html5Qrcode.getCameras();
-                console.log('可用摄像头:', devices);
-                
-                if (!devices || devices.length === 0) {
-                    throw new Error('未找到摄像头');
-                }
-                
-                // 优先找后置摄像头
-                const backCamera = devices.find(d => 
-                    /back|rear|environment|后置|后面|背面|wide/i.test(d.label)
-                );
-                
-                if (backCamera) {
-                    return backCamera.id;
-                }
-                
-                // 多个摄像头时，通常后置在后面
-                if (devices.length > 1) {
-                    return devices[devices.length - 1].id;
-                }
-                
-                return devices[0].id;
-                
-            } catch (err) {
-                console.error('获取摄像头失败:', err);
-                throw err;
-            }
-        }
 
         async function startScan() {
             try {
                 scannerContainer.classList.add('active');
                 
-                const cameraId = await getBackCamera();
-                console.log('使用摄像头 ID:', cameraId);
-                
                 html5QrCode = new Html5Qrcode("reader");
                 
+                // 极速启动：直接用 facingMode，不遍历摄像头
                 await html5QrCode.start(
-                    cameraId,
+                    { facingMode: "environment" },
                     { 
-                        fps: 5,                    // 降低帧率，提升单次解析质量（高密码需要更长时间分析）
-                        qrbox: { width: 280, height: 280 },  // 扫描框大小
-                        aspectRatio: 1.0,          // 正方形扫描区域
+                        fps: 8,                              // 平衡速度和精度
+                        qrbox: { width: 320, height: 320 },  // 大扫描框，容纳更多像素
+                        aspectRatio: 1.0,
                         videoConstraints: {
                             width: { ideal: 1920 },
-                            height: { ideal: 1080 },
-                            facingMode: { exact: "environment" },
-                            advanced: [{ zoom: 2 }]  // 尝试请求 2 倍数码变焦（部分设备支持）
+                            height: { ideal: 1080 }
                         },
-                        disableFlip: false           // 允许识别翻转的二维码
+                        disableFlip: false
                     },
                     (decodedText, decodedResult) => {
-                        // 扫描成功
                         console.log('✅ 扫描结果:', decodedText);
                         stopScan();
                         alert('扫描结果：\n\n' + decodedText);
                     },
                     (errorMessage) => {
-                        // 解析中的错误，正常情况，无需处理
+                        // 解析中，静默处理
                     }
                 );
                 
             } catch (err) {
                 console.error('启动失败:', err);
                 
-                // 如果是摄像头选择问题，显示手动选择
-                if (err.name === 'OverconstrainedError' || err.name === 'NotAllowedError' || 
-                    err.message?.includes('camera') || err.message?.includes('设备')) {
-                    await showCameraSelector();
+                // 如果 facingMode 失败，尝试用 deviceId 兜底
+                if (err.name === 'OverconstrainedError' || err.name === 'NotAllowedError') {
+                    tryBackCameraFallback();
                 } else {
                     alert('启动失败: ' + err.message);
                     stopScan();
@@ -317,61 +265,32 @@
             }
         }
 
-        // 显示摄像头选择器
-        async function showCameraSelector() {
+        // 兜底：用 deviceId 找后置摄像头
+        async function tryBackCameraFallback() {
             try {
                 const devices = await Html5Qrcode.getCameras();
-                cameraSelect.innerHTML = '<option value="">请选择摄像头（建议选后置）</option>';
+                const backCamera = devices.find(d => /back|rear|environment/i.test(d.label));
                 
-                devices.forEach((device, index) => {
-                    const option = document.createElement('option');
-                    option.value = device.id;
-                    option.text = device.label || `摄像头 ${index + 1}`;
-                    cameraSelect.appendChild(option);
-                });
-                
-                cameraSelect.style.display = 'block';
-                scannerContainer.classList.remove('active');
-                
-            } catch (e) {
-                alert('无法获取摄像头列表: ' + e.message);
-            }
-        }
-
-        // 用指定摄像头启动
-        async function startScanWithCamera(deviceId) {
-            if (!deviceId) return;
-            
-            try {
-                scannerContainer.classList.add('active');
-                
-                if (html5QrCode) {
-                    await html5QrCode.stop();
-                    await html5QrCode.clear();
+                if (backCamera && html5QrCode) {
+                    await html5QrCode.start(
+                        backCamera.id,
+                        { 
+                            fps: 8,
+                            qrbox: { width: 320, height: 320 },
+                            aspectRatio: 1.0,
+                            disableFlip: false
+                        },
+                        (decodedText) => {
+                            stopScan();
+                            alert('扫描结果：\n\n' + decodedText);
+                        },
+                        () => {}
+                    );
+                } else {
+                    throw new Error('未找到后置摄像头');
                 }
-                
-                html5QrCode = new Html5Qrcode("reader");
-                
-                await html5QrCode.start(
-                    deviceId,
-                    { 
-                        fps: 5,
-                        qrbox: { width: 280, height: 280 },
-                        aspectRatio: 1.0,
-                        disableFlip: false
-                    },
-                    (decodedText) => {
-                        console.log('✅ 扫描结果:', decodedText);
-                        stopScan();
-                        alert('扫描结果：\n\n' + decodedText);
-                    },
-                    () => {}
-                );
-                
-                cameraSelect.style.display = 'none';
-                
-            } catch (err) {
-                alert('启动失败: ' + err.message);
+            } catch (fallbackErr) {
+                alert('无法启动后置摄像头: ' + fallbackErr.message);
                 stopScan();
             }
         }
@@ -384,7 +303,7 @@
                     await html5QrCode.stop();
                     await html5QrCode.clear();
                 } catch (e) {
-                    console.log('清理资源:', e);
+                    // 忽略清理错误
                 }
                 html5QrCode = null;
             }
