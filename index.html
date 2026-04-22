@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>二维码扫描</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -89,149 +89,16 @@
             cursor: pointer;
         }
         
-        .video-wrapper {
+        #reader {
             flex: 1;
-            position: relative;
-            overflow: hidden;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        #canvas {
-            display: none;
-        }
-        
-        .scan-frame {
-            position: absolute;
-            width: 260px;
-            height: 260px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 16px;
-        }
-        
-        .scan-frame::before,
-        .scan-frame::after {
-            content: '';
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            border-color: #07c160;
-            border-style: solid;
-        }
-        
-        .scan-frame::before {
-            top: -2px;
-            left: -2px;
-            border-width: 4px 0 0 4px;
-            border-top-left-radius: 16px;
-        }
-        
-        .scan-frame::after {
-            bottom: -2px;
-            right: -2px;
-            border-width: 0 4px 4px 0;
-            border-bottom-right-radius: 16px;
-        }
-        
-        .scan-frame .corner-tl,
-        .scan-frame .corner-tr,
-        .scan-frame .corner-bl,
-        .scan-frame .corner-br {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            border-color: #07c160;
-            border-style: solid;
-        }
-        
-        .scan-frame .corner-tl {
-            top: -2px;
-            left: -2px;
-            border-width: 4px 0 0 4px;
-            border-top-left-radius: 16px;
-        }
-        
-        .scan-frame .corner-tr {
-            top: -2px;
-            right: -2px;
-            border-width: 4px 4px 0 0;
-            border-top-right-radius: 16px;
-        }
-        
-        .scan-frame .corner-bl {
-            bottom: -2px;
-            left: -2px;
-            border-width: 0 0 4px 4px;
-            border-bottom-left-radius: 16px;
-        }
-        
-        .scan-frame .corner-br {
-            bottom: -2px;
-            right: -2px;
-            border-width: 0 4px 4px 0;
-            border-bottom-right-radius: 16px;
-        }
-        
-        .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            background: #07c160;
-            top: 0;
-            animation: scan 2.5s linear infinite;
-            box-shadow: 0 0 10px #07c160, 0 0 20px rgba(7, 193, 96, 0.5);
-        }
-        
-        @keyframes scan {
-            0% { top: 0; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-        
-        .scan-tip {
-            position: absolute;
-            bottom: 120px;
-            color: rgba(255,255,255,0.9);
-            font-size: 15px;
-            text-align: center;
-            background: rgba(0,0,0,0.4);
-            padding: 8px 16px;
-            border-radius: 20px;
-        }
-        
-        .result-toast {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 20px 30px;
-            border-radius: 12px;
-            font-size: 16px;
-            z-index: 2000;
-            display: none;
-            max-width: 80%;
-            word-break: break-all;
-            text-align: center;
-        }
-        
-        .result-toast.show {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        #reader video {
+            object-fit: cover !important;
         }
         
         .permission-tip {
@@ -244,7 +111,7 @@
     </style>
 </head>
 <body>
-    <h1>🔍 二维码扫描 V1</h1>
+    <h1>🔍 二维码扫描V2</h1>
     
     <button class="scan-btn" onclick="startScan()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -258,7 +125,7 @@
     
     <p class="permission-tip">
         请将二维码对准扫描框<br>
-        支持识别高密二维码
+        采用 ZXing 引擎，识别率更高
     </p>
 
     <!-- 扫码界面 -->
@@ -267,224 +134,64 @@
             <span>将二维码放入框内自动识别</span>
             <button class="close-btn" onclick="stopScan()">✕</button>
         </div>
-        <div class="video-wrapper">
-            <video id="video" playsinline autoplay muted></video>
-            <canvas id="canvas"></canvas>
-            <div class="scan-frame">
-                <div class="corner-tl"></div>
-                <div class="corner-tr"></div>
-                <div class="corner-bl"></div>
-                <div class="corner-br"></div>
-                <div class="scan-line"></div>
-            </div>
-            <p class="scan-tip">正在识别...</p>
-        </div>
+        <div id="reader"></div>
     </div>
 
-    <div id="result-toast" class="result-toast"></div>
-
     <script>
-        let videoStream = null;
-        let scanTimer = null;
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        let html5QrCode = null;
         const scannerContainer = document.getElementById('scanner-container');
-        const resultToast = document.getElementById('result-toast');
-        
-        // 扫描框在屏幕上的大小（与 CSS 一致）
-        const SCAN_FRAME_SCREEN_SIZE = 260;
+        const readerElement = document.getElementById('reader');
 
         async function startScan() {
             try {
-                // 请求摄像头权限，优先使用后置摄像头
-                videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: { ideal: 'environment' },
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    },
-                    audio: false
-                });
-
-                video.srcObject = videoStream;
-                
-                // 等待视频准备好
-                await new Promise((resolve, reject) => {
-                    video.onloadedmetadata = () => {
-                        video.play();
-                        resolve();
-                    };
-                    video.onerror = reject;
-                });
-
                 scannerContainer.classList.add('active');
-                scanFrame();
+                
+                html5QrCode = new Html5Qrcode("reader");
+                
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    { 
+                        fps: 10,
+                        qrbox: { width: 280, height: 280 },
+                        aspectRatio: 1.0,
+                        videoConstraints: {
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        }
+                    },
+                    (decodedText, decodedResult) => {
+                        // 扫描成功
+                        console.log('扫描结果:', decodedText);
+                        stopScan();
+                        alert('扫描结果：\n\n' + decodedText);
+                    },
+                    (errorMessage) => {
+                        // 解析中的错误，可以忽略
+                    }
+                );
                 
             } catch (err) {
-                console.error('摄像头错误:', err);
-                let msg = '无法访问摄像头';
-                if (err.name === 'NotAllowedError') {
-                    msg = '摄像头权限被拒绝，请在浏览器设置中允许访问摄像头';
-                } else if (err.name === 'NotFoundError') {
-                    msg = '未找到摄像头设备';
-                } else if (err.name === 'NotReadableError') {
-                    msg = '摄像头被其他应用占用';
-                } else if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-                    msg = '当前为非安全环境(HTTP)，请使用 HTTPS 或 localhost 访问';
-                }
-                alert(msg);
-            }
-        }
-
-        function stopScan() {
-            if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
-                videoStream = null;
-            }
-            if (scanTimer) {
-                clearTimeout(scanTimer);
-                scanTimer = null;
-            }
-            scannerContainer.classList.remove('active');
-        }
-
-        function scanFrame() {
-            if (!videoStream || video.readyState !== video.HAVE_ENOUGH_DATA) {
-                scanTimer = setTimeout(scanFrame, 150);
-                return;
-            }
-            
-            // 设置 canvas 尺寸与视频一致
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            
-            // 计算扫描框在视频坐标系中的实际位置和大小
-            // 视频在屏幕上可能是 object-fit: cover，需要计算实际显示区域
-            const videoRatio = canvas.width / canvas.height;
-            const screenRatio = window.innerWidth / window.innerHeight;
-            
-            let displayWidth, displayHeight, offsetX, offsetY;
-            
-            if (videoRatio > screenRatio) {
-                // 视频更宽，上下有裁切
-                displayHeight = window.innerHeight;
-                displayWidth = displayHeight * videoRatio;
-                offsetX = (window.innerWidth - displayWidth) / 2;
-                offsetY = 0;
-            } else {
-                // 视频更高，左右有裁切
-                displayWidth = window.innerWidth;
-                displayHeight = displayWidth / videoRatio;
-                offsetX = 0;
-                offsetY = (window.innerHeight - displayHeight) / 2;
-            }
-            
-            // 扫描框在屏幕上的位置（居中）
-            const frameScreenX = (window.innerWidth - SCAN_FRAME_SCREEN_SIZE) / 2;
-            const frameScreenY = (window.innerHeight - SCAN_FRAME_SCREEN_SIZE) / 2;
-            
-            // 转换为视频坐标
-            const scaleX = canvas.width / displayWidth;
-            const scaleY = canvas.height / displayHeight;
-            
-            const frameVideoX = (frameScreenX - offsetX) * scaleX;
-            const frameVideoY = (frameScreenY - offsetY) * scaleY;
-            const frameVideoW = SCAN_FRAME_SCREEN_SIZE * scaleX;
-            const frameVideoH = SCAN_FRAME_SCREEN_SIZE * scaleY;
-            
-            // 确保裁剪区域在有效范围内
-            const srcX = Math.max(0, Math.floor(frameVideoX));
-            const srcY = Math.max(0, Math.floor(frameVideoY));
-            const srcW = Math.min(canvas.width - srcX, Math.floor(frameVideoW));
-            const srcH = Math.min(canvas.height - srcY, Math.floor(frameVideoH));
-            
-            if (srcW <= 0 || srcH <= 0) {
-                scanTimer = setTimeout(scanFrame, 150);
-                return;
-            }
-            
-            // 将扫描框区域放大到 canvas 全尺寸进行解析（提升密集码识别率）
-            ctx.drawImage(
-                video, 
-                srcX, srcY, srcW, srcH,  // 源：扫描框区域
-                0, 0, canvas.width, canvas.height  // 目标：拉伸到全 canvas
-            );
-            
-            // 获取图像数据
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
-            // 预处理：灰度化 + 自适应二值化
-            const processedData = preprocessImage(imageData);
-            
-            // 使用 jsQR 解析
-            const code = jsQR(processedData.data, processedData.width, processedData.height, {
-                inversionAttempts: 'attemptBoth'
-            });
-            
-            if (code) {
-                console.log('扫描结果:', code.data);
+                console.error('启动失败:', err);
+                alert('启动失败: ' + err.message);
                 stopScan();
-                showResult(code.data);
-                return;
             }
-            
-            // 150ms 后再次扫描
-            scanTimer = setTimeout(scanFrame, 150);
         }
 
-        // 图像预处理：灰度化 + 自适应二值化
-        function preprocessImage(imageData) {
-            const data = imageData.data;
-            const width = imageData.width;
-            const height = imageData.height;
-            const pixelCount = width * height;
+        async function stopScan() {
+            scannerContainer.classList.remove('active');
             
-            // 创建新的 Uint8ClampedArray 用于处理后的图像
-            const processed = new Uint8ClampedArray(pixelCount * 4);
-            
-            // 第一步：计算平均亮度
-            let totalBrightness = 0;
-            const brightnessArray = new Uint8Array(pixelCount);
-            
-            for (let i = 0; i < pixelCount; i++) {
-                const r = data[i * 4];
-                const g = data[i * 4 + 1];
-                const b = data[i * 4 + 2];
-                const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-                brightnessArray[i] = brightness;
-                totalBrightness += brightness;
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                    await html5QrCode.clear();
+                } catch (e) {
+                    console.log('清理资源:', e);
+                }
+                html5QrCode = null;
             }
-            
-            // 自适应阈值：比平均值低一些，确保黑色模块被识别
-            const globalThreshold = (totalBrightness / pixelCount) * 0.65;
-            
-            // 第二步：二值化（可改为局部自适应阈值，效果更好但计算量大）
-            for (let i = 0; i < pixelCount; i++) {
-                const value = brightnessArray[i] < globalThreshold ? 0 : 255;
-                
-                processed[i * 4] = value;
-                processed[i * 4 + 1] = value;
-                processed[i * 4 + 2] = value;
-                processed[i * 4 + 3] = 255;
-            }
-            
-            return new ImageData(processed, width, height);
         }
 
-        function showResult(text) {
-            // 使用 alert 弹出结果
-            alert('扫描结果：\n\n' + text);
-            
-            // 同时显示 toast
-            resultToast.textContent = '扫描成功：' + text;
-            resultToast.classList.add('show');
-            setTimeout(() => {
-                resultToast.classList.remove('show');
-            }, 3000);
-        }
-
-        // 页面卸载时清理资源
+        // 页面卸载时清理
         window.addEventListener('beforeunload', stopScan);
     </script>
 </body>
