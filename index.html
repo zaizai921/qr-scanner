@@ -108,10 +108,21 @@
             text-align: center;
             line-height: 1.6;
         }
+        
+        .camera-select {
+            display: none;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            width: 80%;
+            max-width: 300px;
+        }
     </style>
 </head>
 <body>
-    <h1>🔍 二维码扫描V2</h1>
+    <h1>🔍 二维码扫描V3</h1>
     
     <button class="scan-btn" onclick="startScan()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -123,9 +134,14 @@
         点击扫码
     </button>
     
+    <!-- 摄像头选择下拉框（如果自动选择失败时显示） -->
+    <select id="camera-select" class="camera-select" onchange="startScanWithCamera(this.value)">
+        <option value="">请选择后置摄像头</option>
+    </select>
+    
     <p class="permission-tip">
-        请将二维码对准扫描框<br>
-        采用 ZXing 引擎，识别率更高
+        请允许摄像头权限<br>
+        自动选择后置摄像头
     </p>
 
     <!-- 扫码界面 -->
@@ -141,44 +157,145 @@
         let html5QrCode = null;
         const scannerContainer = document.getElementById('scanner-container');
         const readerElement = document.getElementById('reader');
+        const cameraSelect = document.getElementById('camera-select');
+
+        // 获取后置摄像头的 deviceId
+        async function getBackCameraId() {
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                console.log('可用摄像头:', devices);
+                
+                if (!devices || devices.length === 0) {
+                    throw new Error('未找到摄像头');
+                }
+                
+                // 优先找标签包含 back/rear/environment 的摄像头
+                const backCamera = devices.find(d => 
+                    /back|rear|environment|后置|后面|背面/i.test(d.label)
+                );
+                
+                if (backCamera) {
+                    return { id: backCamera.id, label: backCamera.label };
+                }
+                
+                // 如果没找到，通常最后一个摄像头是后置（前置一般在前面）
+                // 或者返回所有设备让用户选择
+                if (devices.length > 1) {
+                    return { id: devices[devices.length - 1].id, label: devices[devices.length - 1].label };
+                }
+                
+                return { id: devices[0].id, label: devices[0].label };
+                
+            } catch (err) {
+                console.error('获取摄像头失败:', err);
+                throw err;
+            }
+        }
 
         async function startScan() {
             try {
                 scannerContainer.classList.add('active');
                 
+                // 先获取后置摄像头
+                const camera = await getBackCameraId();
+                console.log('使用摄像头:', camera.label, camera.id);
+                
                 html5QrCode = new Html5Qrcode("reader");
                 
                 await html5QrCode.start(
-                    { facingMode: "environment" },
+                    camera.id,  // 使用具体的 deviceId，强制指定后置摄像头
                     { 
                         fps: 10,
                         qrbox: { width: 280, height: 280 },
                         aspectRatio: 1.0,
                         videoConstraints: {
                             width: { ideal: 1920 },
-                            height: { ideal: 1080 }
+                            height: { ideal: 1080 },
+                            facingMode: { exact: "environment" }  // 双重保险
                         }
                     },
                     (decodedText, decodedResult) => {
-                        // 扫描成功
                         console.log('扫描结果:', decodedText);
                         stopScan();
                         alert('扫描结果：\n\n' + decodedText);
                     },
                     (errorMessage) => {
-                        // 解析中的错误，可以忽略
+                        // 解析中的错误，忽略
                     }
                 );
                 
             } catch (err) {
                 console.error('启动失败:', err);
-                alert('启动失败: ' + err.message);
+                
+                // 如果自动选择失败，显示摄像头列表让用户手动选
+                if (err.name === 'OverconstrainedError' || err.name === 'NotAllowedError' || err.message.includes('camera')) {
+                    showCameraSelector();
+                } else {
+                    alert('启动失败: ' + err.message);
+                    stopScan();
+                }
+            }
+        }
+
+        // 显示摄像头选择器
+        async function showCameraSelector() {
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                cameraSelect.innerHTML = '<option value="">请选择后置摄像头</option>';
+                
+                devices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.id;
+                    option.text = device.label || `摄像头 ${index + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+                
+                cameraSelect.style.display = 'block';
+                alert('自动选择后置摄像头失败，请从下拉列表手动选择');
+                
+            } catch (e) {
+                alert('无法获取摄像头列表: ' + e.message);
                 stopScan();
+            }
+        }
+
+        // 用指定摄像头启动
+        async function startScanWithCamera(deviceId) {
+            if (!deviceId) return;
+            
+            try {
+                if (html5QrCode) {
+                    await html5QrCode.stop();
+                    await html5QrCode.clear();
+                }
+                
+                html5QrCode = new Html5Qrcode("reader");
+                
+                await html5QrCode.start(
+                    deviceId,
+                    { 
+                        fps: 10,
+                        qrbox: { width: 280, height: 280 },
+                        aspectRatio: 1.0
+                    },
+                    (decodedText) => {
+                        console.log('扫描结果:', decodedText);
+                        stopScan();
+                        alert('扫描结果：\n\n' + decodedText);
+                    },
+                    () => {}
+                );
+                
+                cameraSelect.style.display = 'none';
+                
+            } catch (err) {
+                alert('启动失败: ' + err.message);
             }
         }
 
         async function stopScan() {
             scannerContainer.classList.remove('active');
+            cameraSelect.style.display = 'none';
             
             if (html5QrCode) {
                 try {
@@ -191,7 +308,6 @@
             }
         }
 
-        // 页面卸载时清理
         window.addEventListener('beforeunload', stopScan);
     </script>
 </body>
