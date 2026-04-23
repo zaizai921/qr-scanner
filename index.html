@@ -130,7 +130,7 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 300px; height: 300px;
+            width: 320px; height: 320px;
             z-index: 5;
         }
         
@@ -179,7 +179,7 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 300px; height: 300px;
+            width: 320px; height: 320px;
             background: transparent;
             border-radius: 20px;
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
@@ -206,7 +206,7 @@
                 <rect x="3" y="14" width="7" height="7" rx="1"/>
             </svg>
         </div>
-        <h1>二维码扫描V6</h1>
+        <h1>二维码扫描V7</h1>
         <p class="desc">支持普通二维码与高密二维码<br>自动调用后置摄像头</p>
         <button class="scan-btn" onclick="startScan()">开始扫描</button>
     </div>
@@ -243,37 +243,78 @@
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const scanner = document.getElementById('scanner');
 
-        // 快速获取后置摄像头 ID
-        async function getBackCameraId() {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(d => d.kind === 'videoinput');
-            
-            // 优先找明确标记为后置的
-            const back = videoDevices.find(d => 
-                /back|rear|environment|后置|后面/i.test(d.label)
-            );
-            if (back) return { exact: back.deviceId };
-            
-            // 次优：找不含 front/user/前置 的
-            const maybeBack = videoDevices.find(d => 
-                !/front|user|前置|face/i.test(d.label)
-            );
-            if (maybeBack) return { exact: maybeBack.deviceId };
-            
-            // 兜底
-            return { ideal: "environment" };
+        // 获取后置摄像头：先尝试 exact 强制，失败再遍历
+        async function getBackCamera() {
+            // 第一步：尝试强制 exact 后置（最快路径）
+            try {
+                const testStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } },
+                    audio: false
+                });
+                testStream.getTracks().forEach(t => t.stop());
+                console.log('✅ exact environment 可用');
+                return { facingMode: { exact: "environment" } };
+            } catch (e) {
+                console.log('exact environment 失败:', e.name);
+            }
+
+            // 第二步：遍历设备列表找后置（label 可能为空，用多种策略）
+            try {
+                // 先请求一次基础权限，否则 enumerateDevices 返回空 label
+                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                tempStream.getTracks().forEach(t => t.stop());
+
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                console.log('摄像头列表:', videoDevices.map(d => ({ id: d.deviceId.slice(0,8), label: d.label })));
+
+                if (videoDevices.length === 0) throw new Error('无摄像头');
+
+                // 策略1：明确标签匹配
+                const backByLabel = videoDevices.find(d => 
+                    /back|rear|environment|后置|后面|背面|wide|ultra/i.test(d.label)
+                );
+                if (backByLabel) {
+                    console.log('✅ 通过标签找到后置:', backByLabel.label);
+                    return { deviceId: { exact: backByLabel.deviceId } };
+                }
+
+                // 策略2：排除前置后，选最后一个（通常后置在后面）
+                const nonFront = videoDevices.filter(d => 
+                    !/front|user|前置|face|selfie/i.test(d.label)
+                );
+                if (nonFront.length > 0) {
+                    const last = nonFront[nonFront.length - 1];
+                    console.log('✅ 通过排除法选择:', last.label || '未命名设备');
+                    return { deviceId: { exact: last.deviceId } };
+                }
+
+                // 策略3：多个设备时选最后一个（经验法则）
+                if (videoDevices.length > 1) {
+                    const last = videoDevices[videoDevices.length - 1];
+                    console.log('✅ 选择最后一个设备:', last.label || '未命名');
+                    return { deviceId: { exact: last.deviceId } };
+                }
+
+                // 兜底
+                return { facingMode: "environment" };
+                
+            } catch (e) {
+                console.log('遍历设备失败:', e);
+                return { facingMode: "environment" };
+            }
         }
 
         async function startScan() {
             try {
                 scanner.classList.add('active');
                 
-                const cameraConstraint = await getBackCameraId();
-                console.log('使用摄像头:', cameraConstraint);
-                
+                const constraint = await getBackCamera();
+                console.log('最终约束:', JSON.stringify(constraint));
+
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        ...cameraConstraint,
+                        ...constraint,
                         width: { ideal: 1920 },
                         height: { ideal: 1080 }
                     },
@@ -283,15 +324,14 @@
                 video.srcObject = stream;
                 await video.play();
                 
-                // 开始扫描循环
                 scanLoop();
                 
             } catch (err) {
-                console.error(err);
+                console.error('启动失败:', err);
                 let msg = '无法启动摄像头';
                 if (err.name === 'NotAllowedError') msg = '请允许摄像头权限';
                 else if (err.name === 'NotFoundError') msg = '未找到后置摄像头';
-                else if (err.name === 'OverconstrainedError') msg = '该摄像头不支持此分辨率';
+                else if (err.name === 'OverconstrainedError') msg = '该设备不支持此摄像头约束';
                 alert(msg);
                 stopScan();
             }
@@ -303,17 +343,15 @@
                 return;
             }
 
-            // 设置 canvas 为视频实际分辨率
             if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
             }
 
-            // 绘制全帧
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 计算扫描框在视频坐标中的位置（居中 300px）
-            const frameSize = 300;
+            // 扫描框 320px 在屏幕上的位置
+            const frameSize = 320;
             const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
             const displayW = canvas.width * scale;
             const displayH = canvas.height * scale;
@@ -327,24 +365,21 @@
             const srcY = Math.round((screenFrameY - offsetY) / scale);
             const srcW = Math.round(frameSize / scale);
             const srcH = Math.round(frameSize / scale);
-            
-            // 安全边界检查
+
             const safeX = Math.max(0, Math.min(srcX, canvas.width - 100));
             const safeY = Math.max(0, Math.min(srcY, canvas.height - 100));
             const safeW = Math.min(srcW, canvas.width - safeX);
             const safeH = Math.min(srcH, canvas.height - safeY);
 
             if (safeW > 100 && safeH > 100) {
-                // 提取扫描区域并放大分析
                 const region = ctx.getImageData(safeX, safeY, safeW, safeH);
                 
-                // 创建临时 canvas 放大该区域
+                // 放大 2 倍 + 锐化
                 const tempCanvas = document.createElement('canvas');
                 const tempCtx = tempCanvas.getContext('2d');
                 tempCanvas.width = safeW * 2;
                 tempCanvas.height = safeH * 2;
                 
-                // 放大 + 对比度增强
                 const imgData = new ImageData(
                     new Uint8ClampedArray(region.data),
                     safeW, safeH
@@ -352,13 +387,9 @@
                 tempCtx.putImageData(imgData, 0, 0);
                 tempCtx.drawImage(tempCanvas, 0, 0, safeW, safeH, 0, 0, safeW * 2, safeH * 2);
                 
-                // 获取放大后的图像数据
                 const scaledData = tempCtx.getImageData(0, 0, safeW * 2, safeH * 2);
-                
-                // 预处理：灰度 + 自适应阈值
                 const processed = preprocess(scaledData);
                 
-                // 尝试解析
                 const code = jsQR(processed.data, processed.width, processed.height, {
                     inversionAttempts: 'attemptBoth'
                 });
@@ -371,20 +402,17 @@
                 }
             }
 
-            // 80ms 间隔，平衡速度和精度
             timer = setTimeout(() => {
                 rafId = requestAnimationFrame(scanLoop);
             }, 80);
         }
 
-        // 图像预处理：灰度 + 自适应二值化
         function preprocess(imageData) {
             const { data, width, height } = imageData;
             const len = width * height;
             const gray = new Uint8Array(len);
             let sum = 0;
 
-            // 转灰度
             for (let i = 0; i < len; i++) {
                 const idx = i * 4;
                 const v = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
@@ -392,9 +420,8 @@
                 sum += v;
             }
 
-            // 自适应阈值（局部均值简化版）
             const globalAvg = sum / len;
-            const threshold = globalAvg * 0.75; // 偏暗阈值，适合屏幕反光场景
+            const threshold = globalAvg * 0.72;
 
             const out = new Uint8ClampedArray(len * 4);
             for (let i = 0; i < len; i++) {
@@ -410,7 +437,6 @@
 
         function stopScan() {
             scanner.classList.remove('active');
-            
             if (stream) {
                 stream.getTracks().forEach(t => t.stop());
                 stream = null;
