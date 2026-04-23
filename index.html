@@ -30,8 +30,7 @@
         }
         
         .icon {
-            width: 80px;
-            height: 80px;
+            width: 80px; height: 80px;
             background: linear-gradient(135deg, #07c160, #05a050);
             border-radius: 24px;
             display: flex;
@@ -41,43 +40,23 @@
             box-shadow: 0 8px 24px rgba(7,193,96,0.3);
         }
         
-        .icon svg {
-            width: 40px;
-            height: 40px;
-            color: white;
-        }
+        .icon svg { width: 40px; height: 40px; color: white; }
         
-        h1 {
-            color: #333;
-            font-size: 22px;
-            margin-bottom: 12px;
-        }
-        
-        .desc {
-            color: #888;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 28px;
-        }
+        h1 { color: #333; font-size: 22px; margin-bottom: 12px; }
+        .desc { color: #888; font-size: 14px; line-height: 1.6; margin-bottom: 28px; }
         
         .scan-btn {
             background: linear-gradient(135deg, #07c160, #05a050);
-            color: white;
-            border: none;
+            color: white; border: none;
             padding: 16px 48px;
             border-radius: 12px;
-            font-size: 17px;
-            font-weight: 600;
+            font-size: 17px; font-weight: 600;
             cursor: pointer;
             box-shadow: 0 8px 24px rgba(7,193,96,0.3);
             transition: all 0.3s;
             width: 100%;
         }
-        
-        .scan-btn:active {
-            transform: scale(0.96);
-            box-shadow: 0 4px 12px rgba(7,193,96,0.3);
-        }
+        .scan-btn:active { transform: scale(0.96); }
         
         /* 扫描界面 */
         #scanner {
@@ -88,7 +67,6 @@
             background: #000;
             z-index: 1000;
         }
-        
         #scanner.active { display: block; }
         
         #video {
@@ -98,7 +76,14 @@
             object-fit: cover;
         }
         
-        #canvas { display: none; }
+        #debug-canvas {
+            position: absolute;
+            top: 10px; right: 10px;
+            width: 120px; height: 120px;
+            border: 2px solid #0f0;
+            z-index: 100;
+            opacity: 0; /* 设为 1 可调试 */
+        }
         
         .header {
             position: absolute;
@@ -111,7 +96,6 @@
             color: white;
             z-index: 10;
         }
-        
         .header span { font-size: 15px; font-weight: 500; }
         
         .close-btn {
@@ -122,44 +106,36 @@
             border-radius: 50%;
             font-size: 20px;
             cursor: pointer;
-            backdrop-filter: blur(10px);
         }
         
-        /* 唯一扫描框 */
+        /* 扫描框 */
         .frame-box {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 320px; height: 320px;
+            width: 280px; height: 280px;
             z-index: 5;
-        }
-        
-        .frame-border {
-            position: absolute;
-            inset: 0;
-            border: 2px solid rgba(255,255,255,0.25);
-            border-radius: 20px;
         }
         
         .corner {
             position: absolute;
-            width: 32px; height: 32px;
+            width: 30px; height: 30px;
             border-color: #00ff88;
             border-style: solid;
         }
-        .tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-radius: 16px 0 0 0; }
-        .tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-radius: 0 16px 0 0; }
-        .bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-radius: 0 0 0 16px; }
-        .br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-radius: 0 0 16px 0; }
+        .tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; }
+        .tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; }
+        .bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; }
+        .br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; }
         
         .scan-line {
             position: absolute;
             left: 10px; right: 10px;
             height: 2px;
-            background: linear-gradient(90deg, transparent, #00ff88, transparent);
+            background: #00ff88;
             top: 0;
             animation: scan 2s ease-in-out infinite;
-            filter: drop-shadow(0 0 6px #00ff88);
+            box-shadow: 0 0 8px #00ff88;
         }
         
         @keyframes scan {
@@ -172,25 +148,31 @@
         .mask {
             position: absolute;
             inset: 0;
+            pointer-events: none;
+        }
+        .mask::before {
+            content: '';
+            position: absolute;
+            inset: 0;
             background: rgba(0,0,0,0.5);
         }
-        
-        .mask .hole {
+        .mask::after {
+            content: '';
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 320px; height: 320px;
+            width: 280px; height: 280px;
             background: transparent;
-            border-radius: 20px;
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            border-radius: 16px;
         }
         
         .tip {
             position: absolute;
-            bottom: 80px;
+            bottom: 100px;
             left: 0; right: 0;
             text-align: center;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255,255,255,0.9);
             font-size: 14px;
             z-index: 5;
         }
@@ -206,24 +188,23 @@
                 <rect x="3" y="14" width="7" height="7" rx="1"/>
             </svg>
         </div>
-        <h1>二维码扫描V7</h1>
-        <p class="desc">支持普通二维码与高密二维码<br>自动调用后置摄像头</p>
+        <h1>二维码扫描V8</h1>
+        <p class="desc">支持普通与高密二维码<br>自动调用后置摄像头</p>
         <button class="scan-btn" onclick="startScan()">开始扫描</button>
     </div>
 
     <div id="scanner">
         <video id="video" playsinline autoplay muted></video>
-        <canvas id="canvas"></canvas>
+        <canvas id="debug-canvas"></canvas>
         
-        <div class="mask"><div class="hole"></div></div>
+        <div class="mask"></div>
         
         <div class="header">
-            <span>将二维码放入框内</span>
+            <span>将二维码对准框内</span>
             <button class="close-btn" onclick="stopScan()">✕</button>
         </div>
         
         <div class="frame-box">
-            <div class="frame-border"></div>
             <div class="corner tl"></div>
             <div class="corner tr"></div>
             <div class="corner bl"></div>
@@ -231,90 +212,25 @@
             <div class="scan-line"></div>
         </div>
         
-        <div class="tip">正在识别二维码...</div>
+        <div class="tip">正在识别...</div>
     </div>
 
     <script>
         let stream = null;
-        let rafId = null;
-        let timer = null;
+        let scanInterval = null;
         const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const debugCanvas = document.getElementById('debug-canvas');
+        const debugCtx = debugCanvas.getContext('2d');
         const scanner = document.getElementById('scanner');
-
-        // 获取后置摄像头：先尝试 exact 强制，失败再遍历
-        async function getBackCamera() {
-            // 第一步：尝试强制 exact 后置（最快路径）
-            try {
-                const testStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { exact: "environment" } },
-                    audio: false
-                });
-                testStream.getTracks().forEach(t => t.stop());
-                console.log('✅ exact environment 可用');
-                return { facingMode: { exact: "environment" } };
-            } catch (e) {
-                console.log('exact environment 失败:', e.name);
-            }
-
-            // 第二步：遍历设备列表找后置（label 可能为空，用多种策略）
-            try {
-                // 先请求一次基础权限，否则 enumerateDevices 返回空 label
-                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                tempStream.getTracks().forEach(t => t.stop());
-
-                const videoDevices = devices.filter(d => d.kind === 'videoinput');
-                console.log('摄像头列表:', videoDevices.map(d => ({ id: d.deviceId.slice(0,8), label: d.label })));
-
-                if (videoDevices.length === 0) throw new Error('无摄像头');
-
-                // 策略1：明确标签匹配
-                const backByLabel = videoDevices.find(d => 
-                    /back|rear|environment|后置|后面|背面|wide|ultra/i.test(d.label)
-                );
-                if (backByLabel) {
-                    console.log('✅ 通过标签找到后置:', backByLabel.label);
-                    return { deviceId: { exact: backByLabel.deviceId } };
-                }
-
-                // 策略2：排除前置后，选最后一个（通常后置在后面）
-                const nonFront = videoDevices.filter(d => 
-                    !/front|user|前置|face|selfie/i.test(d.label)
-                );
-                if (nonFront.length > 0) {
-                    const last = nonFront[nonFront.length - 1];
-                    console.log('✅ 通过排除法选择:', last.label || '未命名设备');
-                    return { deviceId: { exact: last.deviceId } };
-                }
-
-                // 策略3：多个设备时选最后一个（经验法则）
-                if (videoDevices.length > 1) {
-                    const last = videoDevices[videoDevices.length - 1];
-                    console.log('✅ 选择最后一个设备:', last.label || '未命名');
-                    return { deviceId: { exact: last.deviceId } };
-                }
-
-                // 兜底
-                return { facingMode: "environment" };
-                
-            } catch (e) {
-                console.log('遍历设备失败:', e);
-                return { facingMode: "environment" };
-            }
-        }
 
         async function startScan() {
             try {
                 scanner.classList.add('active');
                 
-                const constraint = await getBackCamera();
-                console.log('最终约束:', JSON.stringify(constraint));
-
+                // 直接请求后置摄像头，不遍历
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        ...constraint,
+                        facingMode: { exact: "environment" },
                         width: { ideal: 1920 },
                         height: { ideal: 1080 }
                     },
@@ -322,75 +238,103 @@
                 });
 
                 video.srcObject = stream;
-                await video.play();
+                await new Promise(r => video.onloadedmetadata = r);
+                video.play();
                 
-                scanLoop();
+                // 开始扫描
+                scanInterval = setInterval(scanFrame, 200);
                 
             } catch (err) {
-                console.error('启动失败:', err);
-                let msg = '无法启动摄像头';
-                if (err.name === 'NotAllowedError') msg = '请允许摄像头权限';
-                else if (err.name === 'NotFoundError') msg = '未找到后置摄像头';
-                else if (err.name === 'OverconstrainedError') msg = '该设备不支持此摄像头约束';
-                alert(msg);
+                console.error(err);
+                alert('启动失败: ' + err.message);
                 stopScan();
             }
         }
 
-        function scanLoop() {
-            if (!stream || video.readyState < 3) {
-                timer = setTimeout(scanLoop, 100);
-                return;
-            }
+        function scanFrame() {
+            if (!stream || video.readyState < 3) return;
 
-            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-            }
+            const w = video.videoWidth;
+            const h = video.videoHeight;
+            if (!w || !h) return;
 
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // 扫描框 320px 在屏幕上的位置
-            const frameSize = 320;
-            const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
-            const displayW = canvas.width * scale;
-            const displayH = canvas.height * scale;
-            const offsetX = (window.innerWidth - displayW) / 2;
-            const offsetY = (window.innerHeight - displayH) / 2;
+            // 创建临时 canvas，取视频中心区域（扫描框对应部分）
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
             
-            const screenFrameX = (window.innerWidth - frameSize) / 2;
-            const screenFrameY = (window.innerHeight - frameSize) / 2;
+            // 扫描框在屏幕上占 280px，视频是 object-fit: cover
+            // 计算视频实际显示在屏幕上的缩放比例
+            const videoRatio = w / h;
+            const screenRatio = window.innerWidth / window.innerHeight;
             
-            const srcX = Math.round((screenFrameX - offsetX) / scale);
-            const srcY = Math.round((screenFrameY - offsetY) / scale);
-            const srcW = Math.round(frameSize / scale);
-            const srcH = Math.round(frameSize / scale);
-
-            const safeX = Math.max(0, Math.min(srcX, canvas.width - 100));
-            const safeY = Math.max(0, Math.min(srcY, canvas.height - 100));
-            const safeW = Math.min(srcW, canvas.width - safeX);
-            const safeH = Math.min(srcH, canvas.height - safeY);
-
-            if (safeW > 100 && safeH > 100) {
-                const region = ctx.getImageData(safeX, safeY, safeW, safeH);
-                
-                // 放大 2 倍 + 锐化
-                const tempCanvas = document.createElement('canvas');
-                const tempCtx = tempCanvas.getContext('2d');
-                tempCanvas.width = safeW * 2;
-                tempCanvas.height = safeH * 2;
-                
-                const imgData = new ImageData(
-                    new Uint8ClampedArray(region.data),
-                    safeW, safeH
-                );
-                tempCtx.putImageData(imgData, 0, 0);
-                tempCtx.drawImage(tempCanvas, 0, 0, safeW, safeH, 0, 0, safeW * 2, safeH * 2);
-                
-                const scaledData = tempCtx.getImageData(0, 0, safeW * 2, safeH * 2);
-                const processed = preprocess(scaledData);
-                
-                const code = jsQR(processed.data, processed.width, processed.height, {
+            let renderW, renderH, startX, startY;
+            
+            if (videoRatio > screenRatio) {
+                // 视频更宽，左右被裁切，高度铺满
+                renderH = window.innerHeight;
+                renderW = renderH * videoRatio;
+                startX = (window.innerWidth - renderW) / 2;
+                startY = 0;
+            } else {
+                // 视频更高，上下被裁切，宽度铺满
+                renderW = window.innerWidth;
+                renderH = renderW / videoRatio;
+                startX = 0;
+                startY = (window.innerHeight - renderH) / 2;
+            }
+            
+            // 扫描框在屏幕上的位置（居中 280x280）
+            const frameScreenX = (window.innerWidth - 280) / 2;
+            const frameScreenY = (window.innerHeight - 280) / 2;
+            
+            // 转换为视频坐标系中的位置
+            const scaleX = w / renderW;
+            const scaleY = h / renderH;
+            
+            const sx = (frameScreenX - startX) * scaleX;
+            const sy = (frameScreenY - startY) * scaleY;
+            const sWidth = 280 * scaleX;
+            const sHeight = 280 * scaleY;
+            
+            // 安全边界
+            const srcX = Math.max(0, Math.floor(sx));
+            const srcY = Math.max(0, Math.floor(sy));
+            const srcW = Math.min(Math.floor(sWidth), w - srcX);
+            const srcH = Math.min(Math.floor(sHeight), h - srcY);
+            
+            if (srcW < 50 || srcH < 50) return;
+            
+            // 设置 canvas 为截取区域的大小，放大到 800px 解析
+            const targetSize = 800;
+            canvas.width = targetSize;
+            canvas.height = targetSize;
+            
+            // 绘制截取区域并放大
+            ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, targetSize, targetSize);
+            
+            // 调试：显示实际分析的区域（把 opacity:0 改成 1 可见）
+            debugCanvas.width = targetSize;
+            debugCanvas.height = targetSize;
+            debugCtx.drawImage(canvas, 0, 0);
+            
+            // 获取图像数据
+            const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
+            
+            // 尝试多种预处理策略
+            const strategies = [
+                // 策略1：原图直接试
+                () => imageData,
+                // 策略2：轻度灰度二值化
+                () => binarize(imageData, 0.5),
+                // 策略3：中度二值化
+                () => binarize(imageData, 0.6),
+                // 策略4：重度二值化（适合高密）
+                () => binarize(imageData, 0.7),
+            ];
+            
+            for (const strategy of strategies) {
+                const data = strategy();
+                const code = jsQR(data.data, data.width, data.height, {
                     inversionAttempts: 'attemptBoth'
                 });
                 
@@ -401,29 +345,25 @@
                     return;
                 }
             }
-
-            timer = setTimeout(() => {
-                rafId = requestAnimationFrame(scanLoop);
-            }, 80);
         }
 
-        function preprocess(imageData) {
+        function binarize(imageData, ratio) {
             const { data, width, height } = imageData;
             const len = width * height;
-            const gray = new Uint8Array(len);
             let sum = 0;
-
+            const gray = new Uint8Array(len);
+            
+            // 转灰度并计算均值
             for (let i = 0; i < len; i++) {
                 const idx = i * 4;
                 const v = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
                 gray[i] = v;
                 sum += v;
             }
-
-            const globalAvg = sum / len;
-            const threshold = globalAvg * 0.72;
-
+            
+            const threshold = (sum / len) * ratio;
             const out = new Uint8ClampedArray(len * 4);
+            
             for (let i = 0; i < len; i++) {
                 const val = gray[i] < threshold ? 0 : 255;
                 out[i * 4] = val;
@@ -431,7 +371,7 @@
                 out[i * 4 + 2] = val;
                 out[i * 4 + 3] = 255;
             }
-
+            
             return new ImageData(out, width, height);
         }
 
@@ -441,9 +381,10 @@
                 stream.getTracks().forEach(t => t.stop());
                 stream = null;
             }
-            if (timer) clearTimeout(timer);
-            if (rafId) cancelAnimationFrame(rafId);
-            timer = rafId = null;
+            if (scanInterval) {
+                clearInterval(scanInterval);
+                scanInterval = null;
+            }
         }
 
         window.addEventListener('beforeunload', stopScan);
